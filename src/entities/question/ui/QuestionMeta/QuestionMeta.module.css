@@ -1,0 +1,24 @@
+.meta {
+	display: flex;
+	gap: var(--gap-40);
+}
+
+.item {
+	display: flex;
+	gap: var(--gap-12);
+	background-color: var(--color-black-10);
+	padding: var(--pd-6) var(--pd-10);
+	border-radius: var(--border-radius-8);
+	margin-bottom: var(--mb-24);
+}
+
+.title {
+	color: var(--color-black-800);
+}
+
+.range {
+	color: var(--color-white);
+	background-color: var(--color-purple-700);
+	border-radius: var(--border-radius-4);
+	padding: 2px 4px;
+}
