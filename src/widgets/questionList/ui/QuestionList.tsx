@@ -1,5 +1,5 @@
 import styles from './QuestionList.module.css';
-import QuestionItem from '@entities/question/ui/QuestionItem';
+import QuestionItem from '@entities/question/ui/QuestionItem/QuestionItem';
 
 const faqItems = [
 	{
@@ -57,16 +57,16 @@ const faqItems = [
 
 const QuestionList = () => {
 	return (
-		<article className={styles.wrapper}>
-			<div className={styles.content}>
+		<div className={styles.wrapper}>
+			<article className={styles.content}>
 				<h3 className={styles.text}>Вопросы React, Javascript</h3>
 				<ul className={styles.list}>
 					{faqItems.map((item) => (
 						<QuestionItem key={item.id} title={item.title} body={item.body} />
 					))}
 				</ul>
-			</div>
-		</article>
+			</article>
+		</div>
 	);
 };
 
