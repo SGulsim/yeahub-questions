@@ -1,0 +1,18 @@
+.button {
+	cursor: pointer;
+	outline: none;
+	border: none;
+	font-size: var(--fs-18);
+}
+
+.primary {
+	background-color: var(--color-purple-700);
+	color: var(--color-white);
+	padding: var(--pd-12) var(--pd-29);
+	border-radius: var(--border-radius-12);
+}
+
+.link {
+	background-color: transparent;
+	color: var(--color-purple-700);
+}
