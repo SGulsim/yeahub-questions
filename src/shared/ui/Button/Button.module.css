@@ -2,7 +2,6 @@
 	cursor: pointer;
 	outline: none;
 	border: none;
-	font-size: var(--fs-18);
 }
 
 .primary {
@@ -10,9 +9,36 @@
 	color: var(--color-white);
 	padding: var(--pd-12) var(--pd-29);
 	border-radius: var(--border-radius-12);
+	transition: background-color 0.2s ease;
+}
+
+.primary:hover {
+	background-color: var(--color-purple-800);
 }
 
 .link {
 	background-color: transparent;
 	color: var(--color-purple-700);
+	transition: text-decoration 0.2s ease;
+	text-align: left;
+}
+
+.link:hover {
+	text-decoration: underline;
+}
+
+.skill {
+	padding: var(--pd-10) var(--pd-12);
+	border: 1px solid var(--color-black-200);
+	border-radius: var(--border-radius-12);
+	background-color: transparent;
+	transition: background-color 0.1s ease;
+}
+
+.skill:hover {
+	background-color: var(--color-black-25);
+}
+
+.skill:focus {
+	border: 1px solid var(--color-purple-700);
 }
