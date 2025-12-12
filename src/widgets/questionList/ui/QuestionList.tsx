@@ -61,8 +61,8 @@ const QuestionList = () => {
 			<article className={styles.content}>
 				<h3 className={styles.text}>Вопросы React, Javascript</h3>
 				<ul className={styles.list}>
-					{faqItems.map((item) => (
-						<QuestionItem key={item.id} title={item.title} body={item.body} />
+					{faqItems.map(({ id, title, body }) => (
+						<QuestionItem key={id} id={id} title={title} body={body} />
 					))}
 				</ul>
 			</article>

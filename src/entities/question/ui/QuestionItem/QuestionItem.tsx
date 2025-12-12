@@ -7,11 +7,12 @@ import Image from '@shared/ui/Image/Image';
 import { Link } from 'react-router-dom';
 
 interface QuestionItemProps {
+	id: number;
 	title: string;
 	body: string;
 }
 
-const QuestionItem = ({ title, body }: QuestionItemProps) => {
+const QuestionItem = ({ id, title, body }: QuestionItemProps) => {
 	const [isOpen, setIsOpen] = useState(false);
 	const handleClick = () => setIsOpen((prev) => !prev);
 
@@ -28,7 +29,7 @@ const QuestionItem = ({ title, body }: QuestionItemProps) => {
 				<QuestionMeta />
 				<Image src={preview} alt={'превью'} />
 				<div className={styles.body}>{body}</div>
-				<Link to={'/questionDetail'} className={styles.link}>
+				<Link to={`/detail:${id}`} className={styles.link}>
 					Подробнее
 					<Image src={arrowRight} alt={'arrowRight'} />
 				</Link>

@@ -1,0 +1,9 @@
+.filters {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-24);
+	padding: var(--pd-24);
+	background-color: var(--color-white);
+	border-radius: var(--border-radius-24);
+	height: fit-content;
+}

@@ -9,7 +9,7 @@ export const router = createBrowserRouter([
 		element: <BaseLayout />,
 		children: [
 			{ index: true, element: <QuestionMainPage /> },
-			{ path: '/detail', element: <QuestionDetailPage /> },
+			{ path: '/detail/:questionId', element: <QuestionDetailPage /> },
 		],
 	},
 ]);
