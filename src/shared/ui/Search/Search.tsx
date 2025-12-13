@@ -1,6 +1,6 @@
-import styles from './Search.module.css';
-import search from '@shared/assets/search.svg';
+import { search } from '@shared/assets';
 import Image from '../Image/Image';
+import styles from './Search.module.css';
 
 const Search = () => {
 	return (

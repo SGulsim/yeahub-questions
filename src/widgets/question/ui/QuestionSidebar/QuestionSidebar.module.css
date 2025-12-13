@@ -1,0 +1,24 @@
+.sidebar {
+	display: flex;
+	flex-direction: column;
+	height: fit-content;
+	padding: var(--pd-24) var(--pd-24) 0 var(--pd-24);
+	border-radius: var(--border-radius-24);
+	background-color: var(--color-white);
+}
+
+.title {
+	margin-bottom: var(--mb-8);
+}
+
+.btns,
+.keywords {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-rows: auto;
+	grid-auto-columns: max-content;
+	row-gap: var(--gap-8);
+	column-gap: var(--gap-12);
+	justify-content: flex-start;
+	margin-bottom: var(--mb-24);
+}

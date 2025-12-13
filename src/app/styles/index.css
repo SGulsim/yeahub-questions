@@ -54,6 +54,7 @@
 	--gap-24: 24px;
 	--gap-20: 24px;
 	--gap-12: 12px;
+	--gap-10: 10px;
 	--gap-8: 8px;
 
 	/* --- Paddings --- */
@@ -72,6 +73,7 @@
 	--mb-40: 40px;
 	--mb-24: 24px;
 	--mb-16: 16px;
+	--mb-8: 8px;
 }
 
 body {
