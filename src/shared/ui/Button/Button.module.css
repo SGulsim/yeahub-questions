@@ -32,13 +32,17 @@
 	border: 1px solid var(--color-black-200);
 	border-radius: var(--border-radius-12);
 	background-color: transparent;
-	transition: background-color 0.1s ease;
+	transition: background-color 0.1s ease, border-color 0.1s ease;
 }
 
 .skill:hover {
 	background-color: var(--color-black-25);
 }
 
-.skill:focus {
+.skill:focus-visible {
 	border: 1px solid var(--color-purple-700);
+}
+
+.skillActive {
+	border-color: var(--color-purple-700);
 }
