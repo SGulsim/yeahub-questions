@@ -8,4 +8,6 @@ export {
 	selectShowAllSkills,
 	selectSpecializationsFilter,
 	selectShowAllSpecializations,
+	selectQuestionFilters,
+	selectActiveSpecialization,
 } from './model/filterSelectors';

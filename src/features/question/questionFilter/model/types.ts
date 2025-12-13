@@ -1,8 +1,11 @@
+import type { Skill } from '@entities/skills';
+import type { Specialization } from '@entities/specialization';
+
 export interface QuestionFilterState {
 	showAllSkills: boolean;
 	showAllSpecializations: boolean;
-	specializations: number[];
-	skills: number[];
-	rating: number[];
+	specializations: Specialization[];
+	skills: Skill[];
+	rate: number[];
 	complexity: number[];
 }

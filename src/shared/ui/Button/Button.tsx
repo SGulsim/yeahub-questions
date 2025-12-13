@@ -17,7 +17,8 @@ interface ButtonProps {
 const getButtonClasses = (
 	type: ButtonType,
 	size: ButtonSize,
-	state: ButtonState
+	state: ButtonState,
+	isActive?: boolean
 ): string => {
 	const classMap = {
 		button: styles.button,
@@ -27,13 +28,21 @@ const getButtonClasses = (
 		sizeM: size === 'M' ? styles.sizeM : '',
 		sizeL: size === 'L' ? styles.sizeL : '',
 		disabled: state === 'disabled' ? styles.disabled : '',
+		skillActive: type === 'skill' && isActive ? styles.skillActive : '',
 	};
 
 	return Object.values(classMap).filter(Boolean).join(' ');
 };
 
-const Button = ({ type, size, state, children, onClick }: ButtonProps) => {
-	const buttonClasses = getButtonClasses(type, size, state);
+const Button = ({
+	type,
+	size,
+	state,
+	children,
+	onClick,
+	isActive,
+}: ButtonProps) => {
+	const buttonClasses = getButtonClasses(type, size, state, isActive);
 
 	const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
 		if (state === 'disabled') return;

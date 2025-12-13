@@ -20,3 +20,9 @@ export interface PublicQuestionsApiResponse {
 	page: number;
 	total: number;
 }
+export interface PublicQuestionParams {
+	skills?: number[];
+	specialization?: number;
+	rate?: number[];
+	complexity?: number[];
+}

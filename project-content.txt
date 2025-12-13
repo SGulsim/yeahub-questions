@@ -1,6 +1,6 @@
 # PROJECT CONTENT COLLECTION
-# Generated: 2025-12-13T10:38:29.278Z
-# Total files: 75
+# Generated: 2025-12-13T16:46:20.944Z
+# Total files: 77
 
 ================================================================================
 
@@ -699,14 +699,39 @@ FILE: src\entities\question\api\questionApi.ts
 ────────────────────────────────────────────────────────────────────────────────
 
 import { baseApi } from '@shared/api';
-import type { PublicQuestion } from '../model/types';
+import type { PublicQuestion, PublicQuestionParams } from '../model/types';
 import type { ApiResponse } from '@shared/model';
-import { preview } from '@shared/assets';
+import { logoQuestion, preview } from '@shared/assets';
 
 const questionApi = baseApi.injectEndpoints({
 	endpoints: (builder) => ({
-		fetchQuestions: builder.query<PublicQuestion[], void>({
-			query: () => 'questions/public-questions',
+		fetchQuestions: builder.query<
+			PublicQuestion[],
+			PublicQuestionParams | void
+		>({
+			query: (params) => {
+				console.log(params);
+				const queryParams: Record<string, string> = {};
+				if (params?.specialization) {
+					queryParams.specialization = String(params.specialization);
+				}
+				if (params?.skills && params.skills.length > 0) {
+					queryParams.skills = params.skills.join(',');
+				}
+				if (params?.rate && params.rate.length > 0) {
+					console.log(params.rate.join(','));
+
+					queryParams.rate = params.rate.join(',');
+				}
+				if (params?.complexity && params.complexity.length > 0) {
+					queryParams.complexity = params.complexity.join(',');
+				}
+
+				return {
+					url: 'questions/public-questions',
+					params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+				};
+			},
 			transformResponse: (response: ApiResponse<PublicQuestion>) =>
 				response.data.map((question) => ({
 					...question,
@@ -720,7 +745,7 @@ const questionApi = baseApi.injectEndpoints({
 			query: (id) => `questions/public-questions/${id}`,
 			transformResponse: (question: PublicQuestion) => ({
 				...question,
-				imageSrc: question.imageSrc || preview,
+				imageSrc: question.imageSrc || logoQuestion,
 				keywords: question.keywords ?? [],
 				questionSkills: question.questionSkills ?? [],
 			}),
@@ -767,6 +792,12 @@ export interface PublicQuestionsApiResponse {
 	limit: number;
 	page: number;
 	total: number;
+}
+export interface PublicQuestionParams {
+	skills?: number[];
+	specialization?: number;
+	rate?: number[];
+	complexity?: number[];
 }
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -929,11 +960,19 @@ FILE: src\entities\skills\api\skillsApi.ts
 import { baseApi } from '@shared/api';
 import type { ApiResponse } from '@shared/model/types';
 import type { Skill } from '../model/types';
+export interface FetchSkillsParams {
+	specializationId: number;
+}
 
 const skillsApi = baseApi.injectEndpoints({
 	endpoints: (builder) => ({
-		fetchSkills: builder.query<Skill[], void>({
-			query: () => `skills`,
+		fetchSkills: builder.query<Skill[], FetchSkillsParams>({
+			query: ({ specializationId }) => ({
+				url: 'skills',
+				params: {
+					specializations: specializationId,
+				},
+			}),
 			transformResponse: (response: ApiResponse<Skill>) => response.data,
 		}),
 	}),
@@ -1035,6 +1074,8 @@ export {
 	selectShowAllSkills,
 	selectSpecializationsFilter,
 	selectShowAllSpecializations,
+	selectQuestionFilters,
+	selectActiveSpecialization,
 } from './model/filterSelectors';
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -1043,18 +1084,18 @@ FILE: src\features\question\questionFilter\model\constants.ts
 ────────────────────────────────────────────────────────────────────────────────
 
 export const difficultyButtons = [
-	{ id: 1, title: '1-3' },
-	{ id: 2, title: '4-6' },
-	{ id: 3, title: '7-8' },
-	{ id: 4, title: '9-10' },
+	{ id: 1, title: '1-3', values: [1, 2, 3] },
+	{ id: 2, title: '4-6', values: [4, 5, 6] },
+	{ id: 3, title: '7-8', values: [7, 8] },
+	{ id: 4, title: '9-10', values: [9, 10] },
 ];
 
 export const ratingButtons = [
-	{ id: 1, title: '1' },
-	{ id: 2, title: '2' },
-	{ id: 3, title: '3' },
-	{ id: 4, title: '4' },
-	{ id: 5, title: '5' },
+	{ id: 1, title: '1', value: [1] },
+	{ id: 2, title: '2', value: [2] },
+	{ id: 3, title: '3', value: [3] },
+	{ id: 4, title: '4', value: [4] },
+	{ id: 5, title: '5', value: [5] },
 ];
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -1076,6 +1117,22 @@ export const selectSpecializationsFilter = (state: RootState) =>
 export const selectShowAllSpecializations = (state: RootState) =>
 	state.questionFilters.showAllSpecializations;
 
+export const selectActiveSpecialization = (state: RootState) =>
+	state.questionFilters.specializations[0] ?? null;
+
+export const selectActiveRate = (state: RootState) =>
+	state.questionFilters.rate[0] ?? null;
+
+export const selectActiveComplexity = (state: RootState) =>
+	state.questionFilters.complexity[0] ?? null;
+
+export const selectQuestionFilters = (state: RootState) => ({
+	skills: state.questionFilters.skills.map((skill) => skill.id),
+	specialization: state.questionFilters.specializations[0]?.id,
+	complexity: state.questionFilters.complexity,
+	rate: state.questionFilters.rate,
+});
+
 ────────────────────────────────────────────────────────────────────────────────
 
 FILE: src\features\question\questionFilter\model\filterSlice.ts
@@ -1084,13 +1141,15 @@ FILE: src\features\question\questionFilter\model\filterSlice.ts
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import type { QuestionFilterState } from './types';
+import type { Skill } from '@entities/skills';
+import type { Specialization } from '@entities/specialization';
 
 const initialState: QuestionFilterState = {
 	showAllSkills: false,
 	showAllSpecializations: false,
 	specializations: [],
 	skills: [],
-	rating: [],
+	rate: [],
 	complexity: [],
 };
 
@@ -1098,30 +1157,40 @@ const questionFilterSlice = createSlice({
 	name: 'questionFilters',
 	initialState,
 	reducers: {
-		toggleSkill(state, action: PayloadAction<number>) {
-			const id = action.payload;
+		selectSkill(state, action: PayloadAction<Skill>) {
+			const skill = action.payload;
 
-			state.skills = state.skills.includes(id)
-				? state.skills.filter((skillId) => skillId !== id)
-				: [...state.skills, id];
+			const isAlreadySelected = state.skills.some(({ id }) => id === skill.id);
+
+			state.skills = isAlreadySelected
+				? state.skills.filter(({ id }) => id !== skill.id)
+				: [...state.skills, skill];
 		},
 
 		toggleShowAllSkills(state) {
 			state.showAllSkills = !state.showAllSkills;
 		},
 
-		toggleSpecialization(state, action: PayloadAction<number>) {
-			const id = action.payload;
+		setSpecialization(state, action: PayloadAction<Specialization>) {
+			const specialization = action.payload;
 
-			state.specializations = state.specializations.includes(id)
-				? state.specializations.filter(
-						(specializationId) => specializationId !== id
-				  )
-				: [...state.specializations, id];
+			if (state.specializations[0]?.id === specialization.id) return;
+
+			state.specializations = [specialization];
+			state.skills = [];
+			state.showAllSkills = false;
 		},
 
 		toggleShowAllSpecializations(state) {
 			state.showAllSpecializations = !state.showAllSpecializations;
+		},
+
+		setComplexity(state, action: PayloadAction<number[]>) {
+			state.complexity = action.payload;
+		},
+
+		setRating(state, action: PayloadAction<number[]>) {
+			state.rate = action.payload;
 		},
 
 		resetFilters() {
@@ -1131,10 +1200,12 @@ const questionFilterSlice = createSlice({
 });
 
 export const {
-	toggleSkill,
-	toggleSpecialization,
+	selectSkill,
+	setSpecialization,
 	toggleShowAllSkills,
 	toggleShowAllSpecializations,
+	setComplexity,
+	setRating,
 	resetFilters,
 } = questionFilterSlice.actions;
 
@@ -1145,12 +1216,15 @@ export const questionFilterReducer = questionFilterSlice.reducer;
 FILE: src\features\question\questionFilter\model\types.ts
 ────────────────────────────────────────────────────────────────────────────────
 
+import type { Skill } from '@entities/skills';
+import type { Specialization } from '@entities/specialization';
+
 export interface QuestionFilterState {
 	showAllSkills: boolean;
 	showAllSpecializations: boolean;
-	specializations: number[];
-	skills: number[];
-	rating: number[];
+	specializations: Specialization[];
+	skills: Skill[];
+	rate: number[];
 	complexity: number[];
 }
 
@@ -1161,9 +1235,34 @@ FILE: src\features\question\questionFilter\ui\ComplexityFilter\ComplexityFilter.
 
 import { FilterBase } from '@shared/ui/index';
 import { difficultyButtons } from '../../model/constants';
+import {
+	useAppDispatch,
+	useAppSelector,
+} from '@app/providers/store/configs/hooks';
+import { setComplexity } from '../../model/filterSlice';
+import { selectActiveComplexity } from '../../model/filterSelectors';
 
 const ComplexityFilter = () => {
-	return <FilterBase title={'Уровень сложности'} items={difficultyButtons} />;
+	const activeComplexity = useAppSelector(selectActiveComplexity);
+	const dispatch = useAppDispatch();
+
+	const items = difficultyButtons.map((btn) => ({
+		id: btn.id,
+		title: btn.title,
+		isActive: btn.id === activeComplexity,
+	}));
+
+	return (
+		<FilterBase
+			title='Уровень сложности'
+			items={items}
+			maxVisible={items.length}
+			onItemClick={(id) => {
+				const values = difficultyButtons.filter((btn) => btn.id === id);
+				return dispatch(setComplexity(values[0].values));
+			}}
+		/>
+	);
 };
 
 export default ComplexityFilter;
@@ -1175,9 +1274,34 @@ FILE: src\features\question\questionFilter\ui\RatingFilter\RatingFilter.tsx
 
 import { FilterBase } from '@shared/ui/index';
 import { ratingButtons } from '../../model/constants';
+import {
+	useAppDispatch,
+	useAppSelector,
+} from '@app/providers/store/configs/hooks';
+import { setRating } from '../../model/filterSlice';
+import { selectActiveRate } from '../../model/filterSelectors';
 
 const RatingFilter = () => {
-	return <FilterBase title={'Рейтинг'} items={ratingButtons} />;
+	const activeRate = useAppSelector(selectActiveRate);
+	const dispatch = useAppDispatch();
+
+	const items = ratingButtons.map((rate) => ({
+		id: rate.id,
+		title: rate.title,
+		isActive: rate.id === activeRate,
+	}));
+
+	return (
+		<FilterBase
+			title='Рейтинг'
+			items={items}
+			maxVisible={items.length}
+			onItemClick={(id) => {
+				const values = ratingButtons.filter((btn) => btn.id === id);
+				return dispatch(setRating(values[0].value));
+			}}
+		/>
+	);
 };
 
 export default RatingFilter;
@@ -1196,15 +1320,32 @@ import { FilterBase } from '@shared/ui';
 import {
 	selectShowAllSkills,
 	selectSkillsFilter,
+	selectActiveSpecialization,
 } from '../../model/filterSelectors';
-import { toggleShowAllSkills, toggleSkill } from '../../model/filterSlice';
+import { toggleShowAllSkills, selectSkill } from '../../model/filterSlice';
 
 const SkillsFilter = () => {
 	const selectedSkills = useAppSelector(selectSkillsFilter);
 	const showAll = useAppSelector(selectShowAllSkills);
+	const activeSpecialization = useAppSelector(selectActiveSpecialization);
 	const dispatch = useAppDispatch();
 
-	const { data: skills, isLoading, isError } = useFetchSkillsQuery();
+	const {
+		data: skills,
+		isLoading,
+		isError,
+	} = useFetchSkillsQuery(
+		{
+			specializationId: activeSpecialization?.id ?? 0,
+		},
+		{
+			skip: !activeSpecialization,
+		}
+	);
+
+	if (!activeSpecialization) {
+		return <div>Загрузка...</div>;
+	}
 
 	if (isLoading) return <div>Загрузка...</div>;
 	if (isError || !skills) return <div>Ошибка...</div>;
@@ -1212,7 +1353,7 @@ const SkillsFilter = () => {
 	const items = skills.map((skill) => ({
 		id: skill.id,
 		title: skill.title,
-		isActive: selectedSkills.includes(skill.id),
+		isActive: selectedSkills.some(({ id }) => id === skill.id),
 	}));
 
 	return (
@@ -1222,7 +1363,12 @@ const SkillsFilter = () => {
 			maxVisible={3}
 			showAll={showAll}
 			onToggleShowAll={() => dispatch(toggleShowAllSkills())}
-			onItemClick={(id) => dispatch(toggleSkill(id))}
+			onItemClick={(id) => {
+				const skill = skills.find((item) => item.id === id);
+				if (skill) {
+					dispatch(selectSkill(skill));
+				}
+			}}
 		/>
 	);
 };
@@ -1234,35 +1380,53 @@ export default SkillsFilter;
 FILE: src\features\question\questionFilter\ui\SpecializationFilter\SpecializationFilter.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
+import { useEffect } from 'react';
 import {
 	useAppDispatch,
 	useAppSelector,
 } from '@app/providers/store/configs/hooks';
-import { useFetchSkillsQuery } from '@entities/skills/api/skillsApi';
 import {
 	selectShowAllSpecializations,
-	selectSpecializationsFilter,
+	selectActiveSpecialization,
 } from '../../model/filterSelectors';
 import { FilterBase } from '@shared/ui';
 import {
 	toggleShowAllSpecializations,
-	toggleSpecialization,
+	setSpecialization,
 } from '../../model/filterSlice';
+import { useFetchSpecializationsQuery } from '@entities/specialization/api/specializationApi';
+
+const DEFAULT_SPECIALIZATION_ID = 11;
 
 const SpecializationFilter = () => {
-	const selectedSkills = useAppSelector(selectSpecializationsFilter);
+	const activeSpecialization = useAppSelector(selectActiveSpecialization);
 	const showAll = useAppSelector(selectShowAllSpecializations);
 	const dispatch = useAppDispatch();
 
-	const { data: skills, isLoading, isError } = useFetchSkillsQuery();
+	const {
+		data: specializations,
+		isLoading,
+		isError,
+	} = useFetchSpecializationsQuery();
+
+	useEffect(() => {
+		if (!specializations || specializations.length === 0) return;
+		if (activeSpecialization) return;
+
+		const defaultSpecialization =
+			specializations.find(({ id }) => id === DEFAULT_SPECIALIZATION_ID) ??
+			specializations[0];
+
+		dispatch(setSpecialization(defaultSpecialization));
+	}, [specializations, activeSpecialization, dispatch]);
 
 	if (isLoading) return <div>Загрузка...</div>;
-	if (isError || !skills) return <div>Ошибка...</div>;
+	if (isError || !specializations) return <div>Ошибка...</div>;
 
-	const items = skills.map((skill) => ({
-		id: skill.id,
-		title: skill.title,
-		isActive: selectedSkills.includes(skill.id),
+	const items = specializations.map((specialization) => ({
+		id: specialization.id,
+		title: specialization.title,
+		isActive: activeSpecialization?.id === specialization.id,
 	}));
 
 	return (
@@ -1272,7 +1436,12 @@ const SpecializationFilter = () => {
 			maxVisible={2}
 			showAll={showAll}
 			onToggleShowAll={() => dispatch(toggleShowAllSpecializations())}
-			onItemClick={(id) => dispatch(toggleSpecialization(id))}
+			onItemClick={(id) => {
+				const specialization = specializations.find((item) => item.id === id);
+				if (specialization) {
+					dispatch(setSpecialization(specialization));
+				}
+			}}
 		/>
 	);
 };
@@ -1294,7 +1463,14 @@ FILE: src\pages\questionDetail\ui\QuestionDetailPage.module.css
 
 .content {
 	display: flex;
+	flex-direction: column;
 	gap: var(--gap-20);
+}
+
+.link {
+	display: flex;
+	gap: var(--gap-8);
+	color: var(--color-purple-700);
 }
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -1302,10 +1478,12 @@ FILE: src\pages\questionDetail\ui\QuestionDetailPage.module.css
 FILE: src\pages\questionDetail\ui\QuestionDetailPage.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
-import { useFetchQuestionByIdQuery } from '@entities/question/api/questionApi';
 import styles from './QuestionDetailPage.module.css';
-import { QuestionInfo, QuestionSidebar } from '@widgets/question';
-import { useParams } from 'react-router-dom';
+import { useFetchQuestionByIdQuery } from '@entities/question/api/questionApi';
+import { Link, useParams } from 'react-router-dom';
+import { Image } from '@shared/ui';
+import { arrowLeft } from '@shared/assets';
+import QuestionDetail from '@widgets/question/ui/QuestionDetail/QuestionDetail';
 
 const QuestionDetailPage = () => {
 	const { questionId } = useParams<{ questionId: string }>();
@@ -1320,8 +1498,11 @@ const QuestionDetailPage = () => {
 
 	return (
 		<main className={styles.content}>
-			<QuestionInfo question={question} />
-			<QuestionSidebar question={question} />
+			<Link to={'/'} className={styles.link}>
+				<Image src={arrowLeft} alt={'arrowLeft'} />
+				<span className={styles.back}>Назад</span>
+			</Link>
+			<QuestionDetail question={question} />
 		</main>
 	);
 };
@@ -1526,15 +1707,19 @@ FILE: src\shared\ui\Button\Button.module.css
 	border: 1px solid var(--color-black-200);
 	border-radius: var(--border-radius-12);
 	background-color: transparent;
-	transition: background-color 0.1s ease;
+	transition: background-color 0.1s ease, border-color 0.1s ease;
 }
 
 .skill:hover {
 	background-color: var(--color-black-25);
 }
 
-.skill:focus {
+.skill:focus-visible {
 	border: 1px solid var(--color-purple-700);
+}
+
+.skillActive {
+	border-color: var(--color-purple-700);
 }
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -1561,7 +1746,8 @@ interface ButtonProps {
 const getButtonClasses = (
 	type: ButtonType,
 	size: ButtonSize,
-	state: ButtonState
+	state: ButtonState,
+	isActive?: boolean
 ): string => {
 	const classMap = {
 		button: styles.button,
@@ -1571,13 +1757,21 @@ const getButtonClasses = (
 		sizeM: size === 'M' ? styles.sizeM : '',
 		sizeL: size === 'L' ? styles.sizeL : '',
 		disabled: state === 'disabled' ? styles.disabled : '',
+		skillActive: type === 'skill' && isActive ? styles.skillActive : '',
 	};
 
 	return Object.values(classMap).filter(Boolean).join(' ');
 };
 
-const Button = ({ type, size, state, children, onClick }: ButtonProps) => {
-	const buttonClasses = getButtonClasses(type, size, state);
+const Button = ({
+	type,
+	size,
+	state,
+	children,
+	onClick,
+	isActive,
+}: ButtonProps) => {
+	const buttonClasses = getButtonClasses(type, size, state, isActive);
 
 	const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
 		if (state === 'disabled') return;
@@ -1882,6 +2076,42 @@ export { default as QuestionFilters } from './ui/QuestionFilters/QuestionFilters
 export { default as QuestionInfo } from './ui/QuestionInfo/QuestionInfo';
 export { default as QuestionList } from './ui/QuestionList/QuestionList';
 export { default as QuestionSidebar } from './ui/QuestionSidebar/QuestionSidebar';
+export { default as QuestionDetail } from './ui/QuestionDetail/QuestionDetail';
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\question\ui\QuestionDetail\QuestionDetail.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.details {
+	display: flex;
+	gap: var(--gap-20);
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\question\ui\QuestionDetail\QuestionDetail.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './QuestionDetail.module.css';
+import type { PublicQuestion } from '@entities/question/model/types';
+import QuestionInfo from '../QuestionInfo/QuestionInfo';
+import QuestionSidebar from '../QuestionSidebar/QuestionSidebar';
+
+interface QuestionDetailProps {
+	question: PublicQuestion;
+}
+
+const QuestionDetail = ({ question }: QuestionDetailProps) => {
+	return (
+		<section className={styles.details}>
+			<QuestionInfo question={question} />
+			<QuestionSidebar question={question} />
+		</section>
+	);
+};
+
+export default QuestionDetail;
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -1954,9 +2184,7 @@ FILE: src\widgets\question\ui\QuestionInfo\QuestionInfo.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
 import styles from './QuestionInfo.module.css';
-import { Article, Button, Image } from '@shared/ui';
-import { arrowLeft } from '@shared/assets';
-import { useNavigate } from 'react-router-dom';
+import { Article, Image } from '@shared/ui';
 import type { PublicQuestion } from '@entities/question/model/types';
 interface QuestionInfo {
 	question: PublicQuestion;
@@ -1964,15 +2192,9 @@ interface QuestionInfo {
 
 const QuestionInfo = ({ question }: QuestionInfo) => {
 	const { imageSrc, title, description, shortAnswer, longAnswer } = question;
-	const navigate = useNavigate();
-	const handleNavigate = () => navigate(-1);
 
 	return (
-		<section className={styles.answerInfo}>
-			<Button type='link' size={'M'} state={'default'} onClick={handleNavigate}>
-				<Image src={arrowLeft} alt={'arrowLeft'} />
-				<span className={styles.back}>Назад</span>
-			</Button>
+		<div className={styles.answerInfo}>
 			<Article type={'brief'}>
 				<Image src={imageSrc} alt={'logoQuestion'} />
 				<div className={styles.brief}>
@@ -1990,7 +2212,7 @@ const QuestionInfo = ({ question }: QuestionInfo) => {
 				<h4 className='text-20-med'>{title}</h4>
 				<p className={'text-16-med'}>{longAnswer}</p>
 			</Article>
-		</section>
+		</div>
 	);
 };
 
@@ -2043,20 +2265,44 @@ FILE: src\widgets\question\ui\QuestionList\QuestionList.module.css
 FILE: src\widgets\question\ui\QuestionList\QuestionList.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
-import { QuestionItem } from '@entities/question';
 import styles from './QuestionList.module.css';
+import { QuestionItem } from '@entities/question';
 import { useFetchQuestionsQuery } from '@entities/question/api/questionApi';
+import { useAppSelector } from '@app/providers/store/configs/hooks';
+import {
+	selectActiveSpecialization,
+	selectQuestionFilters,
+} from '@features/question/questionFilter';
 
 const QuestionList = () => {
-	const { data: questions, isLoading, isError } = useFetchQuestionsQuery();
+	const { skills, rate, complexity } = useAppSelector(selectQuestionFilters);
+	const activeSpecialization = useAppSelector(selectActiveSpecialization);
 
+	const queryArgs = activeSpecialization
+		? {
+				skills,
+				rate,
+				complexity,
+				specialization: activeSpecialization.id,
+		  }
+		: undefined;
+
+	const {
+		data: questions,
+		isLoading,
+		isError,
+	} = useFetchQuestionsQuery(queryArgs, {
+		refetchOnMountOrArgChange: true,
+	});
+
+	if (!activeSpecialization) return <div>Загрузка...</div>;
 	if (isLoading) return <div>Загрузка...</div>;
 	if (isError || !questions) return <div>Ошибка...</div>;
 
 	return (
 		<div className={styles.wrapper}>
 			<article className={styles.content}>
-				<h3 className={styles.text}>Вопросы React, Javascript</h3>
+				<h3 className={styles.text}>Вопросы {activeSpecialization.title}</h3>
 				<ul className={styles.list}>
 					{questions.map((question) => (
 						<QuestionItem key={question.id} question={question} />
@@ -2116,7 +2362,7 @@ const QuestionSidebar = ({ question }: QuestionSidebarProps) => {
 	const { rate, complexity, questionSkills, keywords } = question;
 
 	return (
-		<section className={styles.sidebar}>
+		<div className={styles.sidebar}>
 			<span className={`${styles.title} text-16-med`}>Уровень:</span>
 			<QuestionMeta rate={rate} complexity={complexity} />
 
@@ -2143,7 +2389,7 @@ const QuestionSidebar = ({ question }: QuestionSidebarProps) => {
 					</Button>
 				))}
 			</div>
-		</section>
+		</div>
 	);
 };
 
