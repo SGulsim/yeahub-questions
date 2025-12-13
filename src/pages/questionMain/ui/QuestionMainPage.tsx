@@ -1,6 +1,5 @@
+import { QuestionFilters, QuestionList } from '@widgets/question';
 import styles from './QuestionMainPage.module.css';
-import { QuestionFilters } from '@widgets/questionFilters';
-import QuestionList from '@widgets/questionList/ui/QuestionList';
 
 const QuestionMainPage = () => {
 	return (
