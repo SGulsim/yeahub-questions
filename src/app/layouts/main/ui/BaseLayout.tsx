@@ -1,5 +1,5 @@
 import styles from './BaseLayout.module.css';
-import Header from '@widgets/header/ui/Header';
+import { Header } from '@widgets/header';
 import { Outlet } from 'react-router-dom';
 
 const BaseLayout = () => {

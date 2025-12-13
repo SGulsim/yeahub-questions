@@ -1,7 +1,8 @@
-import logo from '@shared/assets/logo.svg';
+import { logo } from '@shared/assets';
+import Image from '../Image/Image';
 
 const Logo = () => {
-	return <img src={logo} alt={'Логотип Yeahub'} />;
+	return <Image src={logo} alt={'Логотип Yeahub'} />;
 };
 
 export default Logo;

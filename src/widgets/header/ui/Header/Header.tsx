@@ -1,15 +1,14 @@
-import Button from '@shared/ui/Button/Button';
+import { Button, Logo } from '@shared/ui';
 import styles from './Header.module.css';
-import Logo from '@shared/ui/Logo/Logo';
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 
 const Header = () => {
 	return (
 		<header className={styles.header}>
-			<div className={styles.logo}>
+			<Link to={'/'} className={styles.logo}>
 				<Logo />
 				<h2 className={styles.logoName}>Yeahub</h2>
-			</div>
+			</Link>
 			<nav className={styles.navigation}>
 				<NavLink to='/base-questions' className='text-16-med'>
 					База вопросов

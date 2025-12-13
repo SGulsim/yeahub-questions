@@ -4,7 +4,6 @@
 	background-color: var(--color-white);
 	gap: var(--gap-20);
 	padding: 0 112px;
-	margin-bottom: var(--mb-40);
 }
 
 .logo {

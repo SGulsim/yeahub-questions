@@ -7,9 +7,11 @@
 	--color-black-900: #191919;
 	--color-black-800: #303030;
 	--color-black-700: #474747;
+	--color-black-300: #a3a3a3;
 	--color-black-200: #bababa;
 	--color-black-100: #d1d1d1;
 	--color-black-50: #e8e8e8;
+	--color-black-25: #f4f4f4;
 	--color-black-10: #f8f8f8;
 	--color-primary-bg: #f4f4f4;
 
@@ -52,6 +54,7 @@
 	--gap-24: 24px;
 	--gap-20: 24px;
 	--gap-12: 12px;
+	--gap-10: 10px;
 	--gap-8: 8px;
 
 	/* --- Paddings --- */
@@ -60,6 +63,7 @@
 	--pd-24: 24px;
 	--pd-20: 20px;
 	--pd-16: 16px;
+	--pd-14: 14px;
 	--pd-12: 12px;
 	--pd-10: 10px;
 	--pd-8: 8px;
@@ -69,6 +73,7 @@
 	--mb-40: 40px;
 	--mb-24: 24px;
 	--mb-16: 16px;
+	--mb-8: 8px;
 }
 
 body {
@@ -145,7 +150,7 @@ h5 {
 .text-16-med {
 	background-color: transparent;
 	font-size: var(--fs-16);
-	line-height: var(--lh-130);
+	line-height: var(--lh-120);
 	font-weight: var(--fw-med);
 }
 .text-16-sb {
