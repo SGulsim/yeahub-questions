@@ -1,0 +1,2268 @@
+# PROJECT CONTENT COLLECTION
+# Generated: 2025-12-13T10:38:29.278Z
+# Total files: 75
+
+================================================================================
+
+FILE: collect-project.mjs
+────────────────────────────────────────────────────────────────────────────────
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const PROJECT_ROOT = path.resolve(__dirname);
+const OUTPUT_FILE = path.join(__dirname, 'project-content.txt');
+
+
+const IGNORE_PATTERNS = [
+	'node_modules',
+	'dist',
+	'build',
+	'.git',
+	'.vscode',
+	'.idea',
+	'coverage',
+	'.tmp',
+	'package-lock.json',
+	'yarn.lock',
+	'pnpm-lock.yaml',
+	'project-content.txt',
+];
+
+
+const INCLUDED_EXTENSIONS = [
+	'.ts',
+	'.tsx',
+	'.js',
+	'.jsx',
+	'.json',
+	'.html',
+	'.scss',
+	'.css',
+	'.md',
+	'.txt',
+	'.mjs',
+	'.cjs',
+];
+
+
+function removeComments(content, filePath) {
+	const ext = path.extname(filePath);
+
+	switch (ext) {
+		case '.ts':
+		case '.tsx':
+		case '.js':
+		case '.jsx':
+		case '.mjs':
+		case '.cjs':
+			
+			return content
+				.replace(/\/\*[\s\S]*?\*\
+				.replace(/\/\/.*$/gm, '')
+				.trim();
+
+		case '.scss':
+		case '.css':
+			
+			return content
+				.replace(/\/\*[\s\S]*?\*\
+				.replace(/\/\/.*$/gm, '')
+				.trim();
+
+		case '.html':
+			
+			return content.replace(/<!--[\s\S]*?-->/g, '').trim();
+
+		case '.json':
+			
+			return content
+				.replace(/\/\*[\s\S]*?\*\
+				.replace(/\/\/.*$/gm, '')
+				.trim();
+
+		default:
+			return content.trim();
+	}
+}
+
+
+function shouldIgnore(filePath) {
+	const relativePath = path.relative(PROJECT_ROOT, filePath);
+	const name = path.basename(filePath);
+
+	return IGNORE_PATTERNS.some(
+		(pattern) => relativePath.includes(pattern) || name === pattern
+	);
+}
+
+
+function shouldInclude(filePath) {
+	if (fs.statSync(filePath).isDirectory()) return false;
+
+	const ext = path.extname(filePath);
+	return INCLUDED_EXTENSIONS.includes(ext);
+}
+
+
+function readDirectory(dirPath, fileList = []) {
+	const items = fs.readdirSync(dirPath);
+
+	for (const item of items) {
+		const fullPath = path.join(dirPath, item);
+
+		if (shouldIgnore(fullPath)) continue;
+
+		if (fs.statSync(fullPath).isDirectory()) {
+			readDirectory(fullPath, fileList);
+		} else if (shouldInclude(fullPath)) {
+			fileList.push(fullPath);
+		}
+	}
+
+	return fileList;
+}
+
+
+function collectProject() {
+	console.log('🔍 Сбор файлов проекта...');
+
+	const allFiles = readDirectory(PROJECT_ROOT);
+	console.log(`📁 Найдено файлов: ${allFiles.length}`);
+
+	let outputContent = `# PROJECT CONTENT COLLECTION\n`;
+	outputContent += `# Generated: ${new Date().toISOString()}\n`;
+	outputContent += `# Total files: ${allFiles.length}\n\n`;
+	outputContent += '='.repeat(80) + '\n\n';
+
+	for (const filePath of allFiles) {
+		try {
+			const relativePath = path.relative(PROJECT_ROOT, filePath);
+			const content = fs.readFileSync(filePath, 'utf8');
+			const contentWithoutComments = removeComments(content, filePath);
+
+			outputContent += `FILE: ${relativePath}\n`;
+			outputContent += '─'.repeat(80) + '\n\n';
+			outputContent += contentWithoutComments + '\n\n';
+			outputContent += '─'.repeat(80) + '\n\n';
+
+			console.log(`✅ Обработан: ${relativePath}`);
+		} catch (error) {
+			console.log(`❌ Ошибка при обработке: ${filePath}`, error.message);
+		}
+	}
+
+	outputContent += '='.repeat(80) + '\n';
+	outputContent += '# END OF PROJECT CONTENT\n';
+
+	
+	fs.writeFileSync(OUTPUT_FILE, outputContent, 'utf8');
+	console.log(`\n📄 Проект собран в: ${OUTPUT_FILE}`);
+	console.log(
+		`📊 Размер файла: ${(
+			Buffer.byteLength(outputContent, 'utf8') /
+			1024 /
+			1024
+		).toFixed(2)} MB`
+	);
+}
+
+
+collectProject();
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: eslint.config.js
+────────────────────────────────────────────────────────────────────────────────
+
+import js from '@eslint/js';
+import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import tseslint from 'typescript-eslint';
+import fsdPlugin from '@conarti/eslint-plugin-feature-sliced';
+import { defineConfig, globalIgnores } from 'eslint/config';
+
+export default defineConfig([
+	globalIgnores(['dist']),
+	{
+		files: ['**/*.{ts,tsx}'],
+		plugins: {
+			'@conarti/feature-sliced': fsdPlugin,
+		},
+		extends: [
+			js.configs.recommended,
+			tseslint.configs.recommended,
+			reactHooks.configs.flat.recommended,
+			reactRefresh.configs.vite,
+			'plugin:@conarti/feature-sliced/recommended',
+		],
+		languageOptions: {
+			ecmaVersion: 2020,
+			globals: globals.browser,
+		},
+	},
+]);
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: index.html
+────────────────────────────────────────────────────────────────────────────────
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap" rel="stylesheet">
+    <title>yeahub_questions</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/app/appEntry.tsx"></script>
+  </body>
+</html>
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: package.json
+────────────────────────────────────────────────────────────────────────────────
+
+{
+	"name": "yeahub_questions",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"dev": "vite --port 3000",
+		"build": "tsc -b && vite build",
+		"lint": "eslint .",
+		"preview": "vite preview",
+		"collect": "node collect-project.mjs"
+	},
+	"dependencies": {
+		"@reduxjs/toolkit": "^2.11.1",
+		"react": "^19.2.0",
+		"react-dom": "^19.2.0",
+		"react-redux": "^9.2.0",
+		"react-router-dom": "^7.10.1"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.39.1",
+		"@feature-sliced/steiger-plugin": "^0.5.7",
+		"@types/node": "^24.10.2",
+		"@types/react": "^19.2.5",
+		"@types/react-dom": "^19.2.3",
+		"@vitejs/plugin-react": "^5.1.1",
+		"eslint": "^9.39.1",
+		"eslint-plugin-react-hooks": "^7.0.1",
+		"eslint-plugin-react-refresh": "^0.4.24",
+		"globals": "^16.5.0",
+		"steiger": "^0.5.11",
+		"typescript": "~5.9.3",
+		"typescript-eslint": "^8.46.4",
+		"vite": "^7.2.4"
+	}
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: README.md
+────────────────────────────────────────────────────────────────────────────────
+
+# React + TypeScript + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
+
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
+#   y e a h u b - q u e s t i o n s  
+ 
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\app\appEntry.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import './styles/normalize.css';
+import './styles/index.css';
+import { RouterProvider } from 'react-router-dom';
+import { router } from '@app/providers/router/configs/routerConfig';
+import { Provider } from 'react-redux';
+import { store } from './providers/store/configs/store';
+
+createRoot(document.getElementById('root')!).render(
+	<StrictMode>
+		<Provider store={store}>
+			<RouterProvider router={router} />
+		</Provider>
+	</StrictMode>
+);
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\app\layouts\main\ui\BaseLayout.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.container {
+	margin: 0 auto;
+	padding: 0 112px;
+	margin: var(--mb-40) 0;
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\app\layouts\main\ui\BaseLayout.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './BaseLayout.module.css';
+import { Header } from '@widgets/header';
+import { Outlet } from 'react-router-dom';
+
+const BaseLayout = () => {
+	return (
+		<>
+			<Header />
+			<div className={styles.container}>
+				<Outlet />
+			</div>
+		</>
+	);
+};
+
+export default BaseLayout;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\app\providers\router\configs\routerConfig.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import BaseLayout from '@app/layouts/main/ui/BaseLayout';
+import QuestionDetailPage from '@pages/questionDetail';
+import QuestionMainPage from '@pages/questionMain';
+import { createBrowserRouter } from 'react-router-dom';
+
+export const router = createBrowserRouter([
+	{
+		path: '/',
+		element: <BaseLayout />,
+		children: [
+			{ index: true, element: <QuestionMainPage /> },
+			{ path: '/detail/:questionId', element: <QuestionDetailPage /> },
+		],
+	},
+]);
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\app\providers\store\configs\hooks.ts
+────────────────────────────────────────────────────────────────────────────────
+
+import { useDispatch, useSelector } from 'react-redux';
+import type { TypedUseSelectorHook } from 'react-redux';
+import type { RootState, AppDispatch } from './store';
+
+export const useAppDispatch: () => AppDispatch = useDispatch;
+export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\app\providers\store\configs\rootReducer.ts
+────────────────────────────────────────────────────────────────────────────────
+
+import { questionFilterReducer } from '@features/question/questionFilter/model/filterSlice';
+import { combineReducers } from '@reduxjs/toolkit';
+import { baseApi } from '@shared/api';
+
+export const rootReducer = combineReducers({
+	[baseApi.reducerPath]: baseApi.reducer,
+	questionFilters: questionFilterReducer,
+});
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\app\providers\store\configs\store.ts
+────────────────────────────────────────────────────────────────────────────────
+
+import { configureStore } from '@reduxjs/toolkit';
+import { rootReducer } from './rootReducer';
+import { baseApi } from '@shared/api';
+
+export const store = configureStore({
+	reducer: rootReducer,
+	middleware: (getDefaultMiddleware) =>
+		getDefaultMiddleware().concat(baseApi.middleware),
+});
+
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\app\styles\index.css
+────────────────────────────────────────────────────────────────────────────────
+
+:root {
+	--color-white: #ffffff;
+	--color-purple-800: #5509cc;
+	--color-purple-700: #6a0bff;
+	--color-purple-brand: #5533ff;
+	--color-text-black: #141414;
+	--color-black-900: #191919;
+	--color-black-800: #303030;
+	--color-black-700: #474747;
+	--color-black-300: #a3a3a3;
+	--color-black-200: #bababa;
+	--color-black-100: #d1d1d1;
+	--color-black-50: #e8e8e8;
+	--color-black-25: #f4f4f4;
+	--color-black-10: #f8f8f8;
+	--color-primary-bg: #f4f4f4;
+
+	
+	--fw-reg: 400;
+	--fw-med: 500;
+	--fw-sb: 600;
+
+	
+	--lh-110: 1.1; 
+	--lh-115: 1.15; 
+	--lh-120: 1.2; 
+	--lh-130: 1.3; 
+
+	
+	
+	--fs-h1: 60px;
+	--fs-h2: 40px;
+	--fs-h3: 34px;
+	--fs-h4: 18px; 
+
+	
+	--fs-12: 12px;
+	--fs-14: 14px;
+	--fs-16: 16px;
+	--fs-18: 18px;
+	--fs-20: 20px;
+	--fs-24: 24px;
+	--fs-32: 32px;
+
+	
+	--border-radius-68: 68px;
+	--border-radius-24: 24px;
+	--border-radius-12: 12px;
+	--border-radius-8: 8px;
+	--border-radius-4: 4px;
+
+	
+	--gap-40: 40px;
+	--gap-24: 24px;
+	--gap-20: 24px;
+	--gap-12: 12px;
+	--gap-10: 10px;
+	--gap-8: 8px;
+
+	
+	--pd-40: 40px;
+	--pd-29: 29px;
+	--pd-24: 24px;
+	--pd-20: 20px;
+	--pd-16: 16px;
+	--pd-14: 14px;
+	--pd-12: 12px;
+	--pd-10: 10px;
+	--pd-8: 8px;
+	--pd-6: 6px;
+
+	
+	--mb-40: 40px;
+	--mb-24: 24px;
+	--mb-16: 16px;
+	--mb-8: 8px;
+}
+
+body {
+	background-color: var(--color-primary-bg);
+}
+
+h1 {
+	font-size: var(--fs-h1);
+	line-height: var(--lh-115);
+	font-weight: var(--fw-sb);
+}
+h2 {
+	font-size: var(--fs-h2);
+	line-height: var(--lh-115);
+	font-weight: var(--fw-sb);
+}
+h3 {
+	font-size: var(--fs-h3);
+	line-height: var(--lh-115);
+	font-weight: var(--fw-sb);
+}
+h4 {
+	font-size: var(--fs-h4);
+	line-height: var(--lh-120);
+	font-weight: var(--fw-sb);
+}
+h5 {
+	font-size: var(--fs-h4);
+	line-height: var(--lh-120);
+	font-weight: var(--fw-sb);
+}
+
+
+.text-12-reg {
+	background-color: transparent;
+	font-size: var(--fs-12);
+	line-height: var(--lh-120);
+	font-weight: var(--fw-reg);
+}
+.text-12-med {
+	background-color: transparent;
+	font-size: var(--fs-12);
+	line-height: var(--lh-120);
+	font-weight: var(--fw-med);
+}
+
+
+.text-14-reg {
+	background-color: transparent;
+	font-size: var(--fs-14);
+	line-height: var(--lh-120);
+	font-weight: var(--fw-reg);
+}
+.text-14-med {
+	background-color: transparent;
+	font-size: var(--fs-14);
+	line-height: var(--lh-120);
+	font-weight: var(--fw-med);
+}
+.text-14-sb {
+	background-color: transparent;
+	font-size: var(--fs-14);
+	line-height: var(--lh-120);
+	font-weight: var(--fw-sb);
+}
+
+
+.text-16-reg {
+	background-color: transparent;
+	font-size: var(--fs-16);
+	line-height: var(--lh-130);
+	font-weight: var(--fw-reg);
+}
+.text-16-med {
+	background-color: transparent;
+	font-size: var(--fs-16);
+	line-height: var(--lh-120);
+	font-weight: var(--fw-med);
+}
+.text-16-sb {
+	background-color: transparent;
+	font-size: var(--fs-16);
+	line-height: var(--lh-110);
+	font-weight: var(--fw-sb);
+}
+
+
+.text-18-sb {
+	background-color: transparent;
+	font-size: var(--fs-18);
+	line-height: var(--lh-120);
+	font-weight: var(--fw-sb);
+}
+
+
+.text-20-reg {
+	background-color: transparent;
+	font-size: var(--fs-20);
+	line-height: var(--lh-120);
+	font-weight: var(--fw-reg);
+}
+.text-20-med {
+	background-color: transparent;
+	font-size: var(--fs-20);
+	line-height: var(--lh-120);
+	font-weight: var(--fw-med);
+}
+.text-20-sb {
+	background-color: transparent;
+	font-size: var(--fs-20);
+	line-height: var(--lh-120);
+	font-weight: var(--fw-sb);
+}
+
+
+.text-24-med {
+	background-color: transparent;
+	font-size: var(--fs-24);
+	line-height: var(--lh-120);
+	font-weight: var(--fw-med);
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\app\styles\normalize.css
+────────────────────────────────────────────────────────────────────────────────
+
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+	font-family: 'Manrope', sans-serif;
+}
+
+a {
+	text-decoration: none;
+	color: inherit;
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\entities\question\api\questionApi.ts
+────────────────────────────────────────────────────────────────────────────────
+
+import { baseApi } from '@shared/api';
+import type { PublicQuestion } from '../model/types';
+import type { ApiResponse } from '@shared/model';
+import { preview } from '@shared/assets';
+
+const questionApi = baseApi.injectEndpoints({
+	endpoints: (builder) => ({
+		fetchQuestions: builder.query<PublicQuestion[], void>({
+			query: () => 'questions/public-questions',
+			transformResponse: (response: ApiResponse<PublicQuestion>) =>
+				response.data.map((question) => ({
+					...question,
+					imageSrc: question.imageSrc || preview,
+					keywords: question.keywords ?? [],
+					questionSkills: question.questionSkills ?? [],
+					questionSpecializations: question.questionSpecializations ?? [],
+				})),
+		}),
+		fetchQuestionById: builder.query<PublicQuestion, string>({
+			query: (id) => `questions/public-questions/${id}`,
+			transformResponse: (question: PublicQuestion) => ({
+				...question,
+				imageSrc: question.imageSrc || preview,
+				keywords: question.keywords ?? [],
+				questionSkills: question.questionSkills ?? [],
+			}),
+		}),
+	}),
+});
+
+export const { useFetchQuestionsQuery, useFetchQuestionByIdQuery } =
+	questionApi;
+
+export default questionApi;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\entities\question\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export { default as QuestionItem } from './ui/QuestionItem/QuestionItem';
+export { default as QuestionMeta } from './ui/QuestionMeta/QuestionMeta';
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\entities\question\model\types.ts
+────────────────────────────────────────────────────────────────────────────────
+
+import type { Skill } from '@entities/skills';
+import type { Specialization } from '@entities/specialization';
+export interface PublicQuestion {
+	id: number;
+	title: string;
+	description: string;
+	code: string;
+	imageSrc: string;
+	keywords: string[];
+	longAnswer: string;
+	shortAnswer: string;
+	complexity: number;
+	rate: number;
+	questionSkills: Skill[];
+	questionSpecializations: Specialization[];
+}
+export interface PublicQuestionsApiResponse {
+	data: PublicQuestion[];
+	limit: number;
+	page: number;
+	total: number;
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\entities\question\ui\QuestionItem\QuestionItem.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.item {
+	display: flex;
+	flex-direction: column;
+	align-items: start;
+	gap: var(--gap-20);
+	user-select: none;
+	overflow: hidden;
+	border-bottom: 1px solid var(--color-black-100);
+}
+
+.item .content {
+	max-height: 0;
+	opacity: 0;
+	overflow: hidden;
+	transition: max-height 0.2s ease, opacity 0.3s ease;
+}
+
+.item.open .content {
+	max-height: 100%;
+	opacity: 1;
+	margin-bottom: var(--mb-16);
+}
+
+.body {
+	margin: var(--mb-24) 0;
+}
+
+.link {
+	margin-left: auto;
+	display: flex;
+	gap: var(--gap-8);
+	width: fit-content;
+
+	color: var(--color-purple-700);
+	background-color: transparent;
+	font-size: var(--fs-16);
+	line-height: var(--lh-110);
+	font-weight: var(--fw-sb);
+}
+
+.title {
+	cursor: pointer;
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\entities\question\ui\QuestionItem\QuestionItem.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './QuestionItem.module.css';
+import { useState } from 'react';
+import type { PublicQuestion } from '@entities/question/model/types';
+import QuestionMeta from '../QuestionMeta/QuestionMeta';
+import { Image } from '@shared/ui';
+import { Link } from 'react-router-dom';
+import { arrowRight } from '@shared/assets';
+interface QuestionItemProps {
+	question: PublicQuestion;
+}
+
+const QuestionItem = ({ question }: QuestionItemProps) => {
+	const { id, title, rate, complexity, imageSrc, shortAnswer } = question;
+	const [isOpen, setIsOpen] = useState(false);
+	const handleClick = () => setIsOpen((prev) => !prev);
+
+	return (
+		<li className={`${styles.item} ${isOpen ? styles.open : ''}`}>
+			<div
+				className={`${styles.title} text-20-med`}
+				role='button'
+				onClick={handleClick}
+			>
+				{title}
+			</div>
+			<div className={styles.content}>
+				<QuestionMeta rate={rate} complexity={complexity} />
+				<Image src={imageSrc} alt={'превью'} />
+				<div className={styles.body}>{shortAnswer}</div>
+				<Link to={`/detail/${id}`} className={styles.link}>
+					Подробнее
+					<Image src={arrowRight} alt={'arrowRight'} />
+				</Link>
+			</div>
+		</li>
+	);
+};
+
+export default QuestionItem;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\entities\question\ui\QuestionMeta\QuestionMeta.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.meta {
+	display: flex;
+	gap: var(--gap-40);
+}
+
+.item {
+	display: flex;
+	gap: var(--gap-12);
+	background-color: var(--color-black-10);
+	padding: var(--pd-6) var(--pd-10);
+	border-radius: var(--border-radius-8);
+	margin-bottom: var(--mb-24);
+}
+
+.title {
+	color: var(--color-black-800);
+}
+
+.range {
+	color: var(--color-white);
+	background-color: var(--color-purple-700);
+	border-radius: var(--border-radius-4);
+	padding: 2px 4px;
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\entities\question\ui\QuestionMeta\QuestionMeta.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './QuestionMeta.module.css';
+interface QuestionMetaProps {
+	rate: number;
+	complexity: number;
+}
+
+const QuestionMeta = ({ rate, complexity }: QuestionMetaProps) => {
+	return (
+		<div className={styles.meta}>
+			<div className={styles.item}>
+				<span className={styles.title}>Рейтинг:</span>
+				<span className={styles.range}>{rate}</span>
+			</div>
+			<div className={styles.item}>
+				<span className={styles.title}>Сложность:</span>
+				<span className={styles.range}>{complexity}</span>
+			</div>
+		</div>
+	);
+};
+
+export default QuestionMeta;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\entities\skills\api\skillsApi.ts
+────────────────────────────────────────────────────────────────────────────────
+
+import { baseApi } from '@shared/api';
+import type { ApiResponse } from '@shared/model/types';
+import type { Skill } from '../model/types';
+
+const skillsApi = baseApi.injectEndpoints({
+	endpoints: (builder) => ({
+		fetchSkills: builder.query<Skill[], void>({
+			query: () => `skills`,
+			transformResponse: (response: ApiResponse<Skill>) => response.data,
+		}),
+	}),
+});
+
+export const { useFetchSkillsQuery } = skillsApi;
+
+export default skillsApi;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\entities\skills\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export type { Skill } from './model/types';
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\entities\skills\model\types.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export interface Skill {
+	id: number;
+	title: string;
+	description: string;
+	imageSrc: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\entities\specialization\api\specializationApi.ts
+────────────────────────────────────────────────────────────────────────────────
+
+import { baseApi } from '@shared/api';
+import type { Specialization } from '../model/types';
+import type { ApiResponse } from '@shared/model/types';
+
+const specializationApi = baseApi.injectEndpoints({
+	endpoints: (builder) => ({
+		fetchSpecializations: builder.query<Specialization[], void>({
+			query: () => `specializations`,
+			transformResponse: (response: ApiResponse<Specialization>) =>
+				response.data,
+		}),
+	}),
+});
+
+export const { useFetchSpecializationsQuery } = specializationApi;
+
+export default specializationApi;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\entities\specialization\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export { useSpecializations } from './lib/hooks/useSpecializations';
+export type { Specialization, SpecializationApiResponse } from './model/types';
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\entities\specialization\model\types.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export interface Specialization {
+	id: number;
+	title: string;
+	description: string;
+	imageSrc: string;
+	createdAt: string;
+	updatedAt: string;
+	createdBy: {
+		id: string;
+		username: string;
+	};
+}
+
+export interface SpecializationApiResponse {
+	page: number;
+	total: number;
+	limit: number;
+	data: Specialization[];
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\features\question\questionFilter\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export { default as ComplexityFilter } from './ui/ComplexityFilter/ComplexityFilter';
+export { default as RatingFilter } from './ui/RatingFilter/RatingFilter';
+export { default as SkillsFilter } from './ui/SkillsFilter/SkillsFilter';
+export { default as SpecializationFilter } from './ui/SpecializationFilter/SpecializationFilter';
+
+export {
+	selectSkillsFilter,
+	selectShowAllSkills,
+	selectSpecializationsFilter,
+	selectShowAllSpecializations,
+} from './model/filterSelectors';
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\features\question\questionFilter\model\constants.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export const difficultyButtons = [
+	{ id: 1, title: '1-3' },
+	{ id: 2, title: '4-6' },
+	{ id: 3, title: '7-8' },
+	{ id: 4, title: '9-10' },
+];
+
+export const ratingButtons = [
+	{ id: 1, title: '1' },
+	{ id: 2, title: '2' },
+	{ id: 3, title: '3' },
+	{ id: 4, title: '4' },
+	{ id: 5, title: '5' },
+];
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\features\question\questionFilter\model\filterSelectors.ts
+────────────────────────────────────────────────────────────────────────────────
+
+import type { RootState } from '@app/providers/store/configs/store';
+
+export const selectSkillsFilter = (state: RootState) =>
+	state.questionFilters.skills;
+
+export const selectShowAllSkills = (state: RootState) =>
+	state.questionFilters.showAllSkills;
+
+export const selectSpecializationsFilter = (state: RootState) =>
+	state.questionFilters.specializations;
+
+export const selectShowAllSpecializations = (state: RootState) =>
+	state.questionFilters.showAllSpecializations;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\features\question\questionFilter\model\filterSlice.ts
+────────────────────────────────────────────────────────────────────────────────
+
+import { createSlice } from '@reduxjs/toolkit';
+import type { PayloadAction } from '@reduxjs/toolkit';
+import type { QuestionFilterState } from './types';
+
+const initialState: QuestionFilterState = {
+	showAllSkills: false,
+	showAllSpecializations: false,
+	specializations: [],
+	skills: [],
+	rating: [],
+	complexity: [],
+};
+
+const questionFilterSlice = createSlice({
+	name: 'questionFilters',
+	initialState,
+	reducers: {
+		toggleSkill(state, action: PayloadAction<number>) {
+			const id = action.payload;
+
+			state.skills = state.skills.includes(id)
+				? state.skills.filter((skillId) => skillId !== id)
+				: [...state.skills, id];
+		},
+
+		toggleShowAllSkills(state) {
+			state.showAllSkills = !state.showAllSkills;
+		},
+
+		toggleSpecialization(state, action: PayloadAction<number>) {
+			const id = action.payload;
+
+			state.specializations = state.specializations.includes(id)
+				? state.specializations.filter(
+						(specializationId) => specializationId !== id
+				  )
+				: [...state.specializations, id];
+		},
+
+		toggleShowAllSpecializations(state) {
+			state.showAllSpecializations = !state.showAllSpecializations;
+		},
+
+		resetFilters() {
+			return initialState;
+		},
+	},
+});
+
+export const {
+	toggleSkill,
+	toggleSpecialization,
+	toggleShowAllSkills,
+	toggleShowAllSpecializations,
+	resetFilters,
+} = questionFilterSlice.actions;
+
+export const questionFilterReducer = questionFilterSlice.reducer;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\features\question\questionFilter\model\types.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export interface QuestionFilterState {
+	showAllSkills: boolean;
+	showAllSpecializations: boolean;
+	specializations: number[];
+	skills: number[];
+	rating: number[];
+	complexity: number[];
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\features\question\questionFilter\ui\ComplexityFilter\ComplexityFilter.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import { FilterBase } from '@shared/ui/index';
+import { difficultyButtons } from '../../model/constants';
+
+const ComplexityFilter = () => {
+	return <FilterBase title={'Уровень сложности'} items={difficultyButtons} />;
+};
+
+export default ComplexityFilter;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\features\question\questionFilter\ui\RatingFilter\RatingFilter.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import { FilterBase } from '@shared/ui/index';
+import { ratingButtons } from '../../model/constants';
+
+const RatingFilter = () => {
+	return <FilterBase title={'Рейтинг'} items={ratingButtons} />;
+};
+
+export default RatingFilter;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\features\question\questionFilter\ui\SkillsFilter\SkillsFilter.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import {
+	useAppDispatch,
+	useAppSelector,
+} from '@app/providers/store/configs/hooks';
+import { useFetchSkillsQuery } from '@entities/skills/api/skillsApi';
+import { FilterBase } from '@shared/ui';
+import {
+	selectShowAllSkills,
+	selectSkillsFilter,
+} from '../../model/filterSelectors';
+import { toggleShowAllSkills, toggleSkill } from '../../model/filterSlice';
+
+const SkillsFilter = () => {
+	const selectedSkills = useAppSelector(selectSkillsFilter);
+	const showAll = useAppSelector(selectShowAllSkills);
+	const dispatch = useAppDispatch();
+
+	const { data: skills, isLoading, isError } = useFetchSkillsQuery();
+
+	if (isLoading) return <div>Загрузка...</div>;
+	if (isError || !skills) return <div>Ошибка...</div>;
+
+	const items = skills.map((skill) => ({
+		id: skill.id,
+		title: skill.title,
+		isActive: selectedSkills.includes(skill.id),
+	}));
+
+	return (
+		<FilterBase
+			title='Навыки'
+			items={items}
+			maxVisible={3}
+			showAll={showAll}
+			onToggleShowAll={() => dispatch(toggleShowAllSkills())}
+			onItemClick={(id) => dispatch(toggleSkill(id))}
+		/>
+	);
+};
+
+export default SkillsFilter;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\features\question\questionFilter\ui\SpecializationFilter\SpecializationFilter.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import {
+	useAppDispatch,
+	useAppSelector,
+} from '@app/providers/store/configs/hooks';
+import { useFetchSkillsQuery } from '@entities/skills/api/skillsApi';
+import {
+	selectShowAllSpecializations,
+	selectSpecializationsFilter,
+} from '../../model/filterSelectors';
+import { FilterBase } from '@shared/ui';
+import {
+	toggleShowAllSpecializations,
+	toggleSpecialization,
+} from '../../model/filterSlice';
+
+const SpecializationFilter = () => {
+	const selectedSkills = useAppSelector(selectSpecializationsFilter);
+	const showAll = useAppSelector(selectShowAllSpecializations);
+	const dispatch = useAppDispatch();
+
+	const { data: skills, isLoading, isError } = useFetchSkillsQuery();
+
+	if (isLoading) return <div>Загрузка...</div>;
+	if (isError || !skills) return <div>Ошибка...</div>;
+
+	const items = skills.map((skill) => ({
+		id: skill.id,
+		title: skill.title,
+		isActive: selectedSkills.includes(skill.id),
+	}));
+
+	return (
+		<FilterBase
+			title='Специализации'
+			items={items}
+			maxVisible={2}
+			showAll={showAll}
+			onToggleShowAll={() => dispatch(toggleShowAllSpecializations())}
+			onItemClick={(id) => dispatch(toggleSpecialization(id))}
+		/>
+	);
+};
+
+export default SpecializationFilter;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\pages\questionDetail\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+import QuestionDetailPage from './ui/QuestionDetailPage';
+export default QuestionDetailPage;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\pages\questionDetail\ui\QuestionDetailPage.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.content {
+	display: flex;
+	gap: var(--gap-20);
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\pages\questionDetail\ui\QuestionDetailPage.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import { useFetchQuestionByIdQuery } from '@entities/question/api/questionApi';
+import styles from './QuestionDetailPage.module.css';
+import { QuestionInfo, QuestionSidebar } from '@widgets/question';
+import { useParams } from 'react-router-dom';
+
+const QuestionDetailPage = () => {
+	const { questionId } = useParams<{ questionId: string }>();
+	const {
+		data: question,
+		isLoading,
+		isError,
+	} = useFetchQuestionByIdQuery(questionId!);
+
+	if (isLoading) return <div>Загрузка...</div>;
+	if (isError || !question) return <div>Ошибка...</div>;
+
+	return (
+		<main className={styles.content}>
+			<QuestionInfo question={question} />
+			<QuestionSidebar question={question} />
+		</main>
+	);
+};
+
+export default QuestionDetailPage;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\pages\questionMain\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+import QuestionMainPage from './ui/QuestionMainPage';
+export default QuestionMainPage;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\pages\questionMain\ui\QuestionMainPage.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.content {
+	display: flex;
+	gap: var(--gap-20);
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\pages\questionMain\ui\QuestionMainPage.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import { QuestionFilters, QuestionList } from '@widgets/question';
+import styles from './QuestionMainPage.module.css';
+
+const QuestionMainPage = () => {
+	return (
+		<main className={styles.content}>
+			<QuestionList />
+			<QuestionFilters />
+		</main>
+	);
+};
+
+export default QuestionMainPage;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\api\baseApi.ts
+────────────────────────────────────────────────────────────────────────────────
+
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+
+const baseApi = createApi({
+	reducerPath: 'baseApi',
+	baseQuery: fetchBaseQuery({ baseUrl: import.meta.env.VITE_API_BASE_URL }),
+	endpoints: () => ({}),
+	tagTypes: ['Question', 'Specialization', 'Skill'],
+});
+
+export default baseApi;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\api\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export { default as baseApi } from './baseApi';
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\assets\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export { default as logoQuestion } from './images/logoQuestion.png';
+export { default as preview } from './images/preview.jpg';
+
+export { default as arrowLeftCircle } from './icons/arrowLeftCircle.svg';
+export { default as arrowRightCircle } from './icons/arrowRightCircle.svg';
+export { default as arrowRight } from './icons/arrowRight.svg';
+export { default as arrowLeft } from './icons/arrowLeft.svg';
+export { default as arrowUp } from './icons/arrowUp.svg';
+export { default as logo } from './icons/logo.svg';
+export { default as search } from './icons/search.svg';
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\model\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export type { ApiResponse, FilterBaseProps, FilterItem } from './types';
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\model\types.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export interface ApiResponse<T> {
+	page: number;
+	total: number;
+	limit: number;
+	data: T[];
+}
+
+export interface FilterItem {
+	id: number;
+	title: string;
+	isActive?: boolean;
+}
+
+export interface FilterBaseProps {
+	title: string;
+	items: FilterItem[];
+	maxVisible?: number;
+	showAll?: boolean;
+	onToggleShowAll?: () => void;
+	onItemClick?: (id: FilterItem['id']) => void;
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\Article\Article.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.content {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-20);
+	padding: var(--pd-24);
+	border-radius: var(--border-radius-24);
+	background-color: var(--color-white);
+}
+
+.brief {
+	display: flex;
+	gap: var(--gap-20);
+	padding: var(--pd-24);
+	border-radius: var(--border-radius-24);
+	background-color: var(--color-white);
+}
+
+.body {
+	color: var(--color-black-700);
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\Article\Article.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './Article.module.css';
+import type { ReactNode } from 'react';
+
+interface ArticleProps {
+	type: 'brief' | 'short' | 'long';
+	children: ReactNode;
+}
+
+const Article = ({ type, children }: ArticleProps) => {
+	return (
+		<article className={`${type === 'brief' ? styles.brief : styles.content}`}>
+			{children}
+		</article>
+	);
+};
+
+export default Article;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\Button\Button.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.button {
+	cursor: pointer;
+	outline: none;
+	border: none;
+}
+
+.primary {
+	background-color: var(--color-purple-700);
+	color: var(--color-white);
+	padding: var(--pd-12) var(--pd-29);
+	border-radius: var(--border-radius-12);
+	transition: background-color 0.2s ease;
+}
+
+.primary:hover {
+	background-color: var(--color-purple-800);
+}
+
+.link {
+	background-color: transparent;
+	color: var(--color-purple-700);
+	transition: text-decoration 0.2s ease;
+	text-align: left;
+}
+
+.link:hover {
+	text-decoration: underline;
+}
+
+.skill {
+	padding: var(--pd-10) var(--pd-12);
+	border: 1px solid var(--color-black-200);
+	border-radius: var(--border-radius-12);
+	background-color: transparent;
+	transition: background-color 0.1s ease;
+}
+
+.skill:hover {
+	background-color: var(--color-black-25);
+}
+
+.skill:focus {
+	border: 1px solid var(--color-purple-700);
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\Button\Button.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './Button.module.css';
+import type { MouseEventHandler, ReactNode } from 'react';
+
+type ButtonType = 'primary' | 'link' | 'skill';
+type ButtonSize = 'M' | 'L';
+type ButtonState = 'default' | 'disabled';
+
+interface ButtonProps {
+	children: ReactNode;
+	type: ButtonType;
+	size: ButtonSize;
+	state: ButtonState;
+	onClick?: MouseEventHandler<HTMLButtonElement>;
+	isActive?: boolean;
+}
+
+const getButtonClasses = (
+	type: ButtonType,
+	size: ButtonSize,
+	state: ButtonState
+): string => {
+	const classMap = {
+		button: styles.button,
+		primary: type === 'primary' ? styles.primary : '',
+		link: type === 'link' ? `${styles.link} text-14-reg` : '',
+		skill: type === 'skill' ? `${styles.skill} text-16-med` : '',
+		sizeM: size === 'M' ? styles.sizeM : '',
+		sizeL: size === 'L' ? styles.sizeL : '',
+		disabled: state === 'disabled' ? styles.disabled : '',
+	};
+
+	return Object.values(classMap).filter(Boolean).join(' ');
+};
+
+const Button = ({ type, size, state, children, onClick }: ButtonProps) => {
+	const buttonClasses = getButtonClasses(type, size, state);
+
+	const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+		if (state === 'disabled') return;
+		onClick?.(e);
+	};
+
+	return (
+		<button
+			onClick={handleClick}
+			className={buttonClasses}
+			disabled={state === 'disabled'}
+		>
+			{children}
+		</button>
+	);
+};
+
+export default Button;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\FilterBase\FilterBase.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.filters {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-8);
+}
+
+.link {
+	color: var(--color-purple-800);
+	text-decoration: underline;
+	text-decoration-thickness: 0.5px;
+}
+
+.btns {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-rows: auto;
+	grid-auto-columns: max-content;
+	row-gap: var(--gap-8);
+	column-gap: var(--gap-12);
+	justify-content: flex-start;
+}
+
+.btns.multi-column {
+	grid-template-columns: repeat(2, max-content);
+	grid-auto-flow: row;
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\FilterBase\FilterBase.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './FilterBase.module.css';
+import type { FilterItem } from '@shared/model';
+import { Button } from '@shared/ui';
+interface FilterBaseProps {
+	title: string;
+	items: FilterItem[];
+	maxVisible?: number;
+	showAll?: boolean;
+	onToggleShowAll?: () => void;
+	onItemClick?: (id: number) => void;
+}
+
+const FilterBase = ({
+	title,
+	items,
+	maxVisible,
+	showAll,
+	onToggleShowAll,
+	onItemClick,
+}: FilterBaseProps) => {
+	const visibleItems =
+		maxVisible && !showAll ? items.slice(0, maxVisible) : items;
+
+	return (
+		<div className={styles.filters}>
+			<span className='text-14-reg'>{title}</span>
+
+			<div
+				className={`${styles.btns} ${showAll ? styles['multi-column'] : ''}`}
+			>
+				{visibleItems.map(({ id, title, isActive }) => (
+					<Button
+						key={id}
+						type='skill'
+						size='M'
+						state='default'
+						isActive={isActive}
+						onClick={() => onItemClick?.(id)}
+					>
+						{title}
+					</Button>
+				))}
+			</div>
+
+			{maxVisible && onToggleShowAll && (
+				<Button type='link' size='M' state='default' onClick={onToggleShowAll}>
+					{showAll ? 'Скрыть' : 'Показать все'}
+				</Button>
+			)}
+		</div>
+	);
+};
+
+export default FilterBase;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\Image\Image.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\Image\Image.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './Image.module.css';
+
+interface ImageProps {
+	src?: string;
+	alt?: string;
+}
+
+const Image = ({ src, alt }: ImageProps) => {
+	return <img src={src} alt={alt} className={styles.image} />;
+};
+
+export default Image;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export { default as Button } from './Button/Button';
+export { default as Image } from './Image/Image';
+export { default as Logo } from './Logo/Logo';
+export { default as Search } from './Search/Search';
+export { default as FilterBase } from './FilterBase/FilterBase';
+export { default as Article } from './Article/Article';
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\Logo\Logo.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import { logo } from '@shared/assets';
+import Image from '../Image/Image';
+
+const Logo = () => {
+	return <Image src={logo} alt={'Логотип Yeahub'} />;
+};
+
+export default Logo;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\Search\Search.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.search {
+	display: flex;
+	align-items: center;
+	gap: var(--pd-8);
+	border: 1px solid var(--color-black-50);
+	border-radius: var(--border-radius-68);
+	padding: var(--pd-14) var(--pd-24);
+	background: white;
+}
+
+.input {
+	flex: 1 1 auto;
+	min-width: 0;
+	color: var(--color-black-800);
+	border: none;
+	background: transparent;
+	font-size: var(--fs-16);
+}
+
+.input::placeholder {
+	color: var(--color-black-300);
+}
+
+.input:focus {
+	outline: none;
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\Search\Search.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import { search } from '@shared/assets';
+import Image from '../Image/Image';
+import styles from './Search.module.css';
+
+const Search = () => {
+	return (
+		<div role='img' className={styles.search}>
+			<Image src={search} alt={'Поиск вопросов'} />
+			<input className={styles.input} placeholder='Введите запрос...' />
+		</div>
+	);
+};
+
+export default Search;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\header\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export { default as Header } from './ui/Header/Header';
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\header\ui\Header\Header.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.header {
+	display: flex;
+	align-items: center;
+	background-color: var(--color-white);
+	gap: var(--gap-20);
+	padding: 0 112px;
+}
+
+.logo {
+	display: flex;
+	gap: var(--gap-8);
+	padding-top: var(--pd-16);
+	padding-bottom: var(--pd-16);
+}
+
+.logoName {
+	color: var(--color-text-black);
+	font-weight: 900;
+}
+
+.navigation {
+	display: flex;
+	gap: var(--gap-20);
+}
+
+.authorization {
+	display: flex;
+	gap: var(--gap-24);
+	margin-left: auto;
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\header\ui\Header\Header.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import { Button, Logo } from '@shared/ui';
+import styles from './Header.module.css';
+import { Link, NavLink } from 'react-router-dom';
+
+const Header = () => {
+	return (
+		<header className={styles.header}>
+			<Link to={'/'} className={styles.logo}>
+				<Logo />
+				<h2 className={styles.logoName}>Yeahub</h2>
+			</Link>
+			<nav className={styles.navigation}>
+				<NavLink to='/base-questions' className='text-16-med'>
+					База вопросов
+				</NavLink>
+				<NavLink to='/trainer' className='text-16-med'>
+					Тренажер
+				</NavLink>
+			</nav>
+			<div className={styles.authorization}>
+				<Button type={'link'} size={'L'} state={'default'}>
+					Вход
+				</Button>
+				<Button type={'primary'} size={'M'} state={'default'}>
+					Регистрация
+				</Button>
+			</div>
+		</header>
+	);
+};
+
+export default Header;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\question\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export { default as QuestionFilters } from './ui/QuestionFilters/QuestionFilters';
+export { default as QuestionInfo } from './ui/QuestionInfo/QuestionInfo';
+export { default as QuestionList } from './ui/QuestionList/QuestionList';
+export { default as QuestionSidebar } from './ui/QuestionSidebar/QuestionSidebar';
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\question\ui\QuestionFilters\QuestionFilters.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.filters {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-24);
+	padding: var(--pd-24);
+	background-color: var(--color-white);
+	border-radius: var(--border-radius-24);
+	height: fit-content;
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\question\ui\QuestionFilters\QuestionFilters.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import { Search } from '@shared/ui';
+import styles from './QuestionFilters.module.css';
+import {
+	ComplexityFilter,
+	RatingFilter,
+	SkillsFilter,
+	SpecializationFilter,
+} from '@features/question/questionFilter';
+
+const QuestionFilters = () => {
+	return (
+		<aside className={styles.filters}>
+			<Search />
+			<SpecializationFilter />
+			<SkillsFilter />
+			<ComplexityFilter />
+			<RatingFilter />
+		</aside>
+	);
+};
+
+export default QuestionFilters;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\question\ui\QuestionInfo\QuestionInfo.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.answerInfo {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-20);
+}
+
+.brief {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-12);
+}
+
+.back {
+	display: inline-block;
+	margin-left: var(--mb-8);
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\question\ui\QuestionInfo\QuestionInfo.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './QuestionInfo.module.css';
+import { Article, Button, Image } from '@shared/ui';
+import { arrowLeft } from '@shared/assets';
+import { useNavigate } from 'react-router-dom';
+import type { PublicQuestion } from '@entities/question/model/types';
+interface QuestionInfo {
+	question: PublicQuestion;
+}
+
+const QuestionInfo = ({ question }: QuestionInfo) => {
+	const { imageSrc, title, description, shortAnswer, longAnswer } = question;
+	const navigate = useNavigate();
+	const handleNavigate = () => navigate(-1);
+
+	return (
+		<section className={styles.answerInfo}>
+			<Button type='link' size={'M'} state={'default'} onClick={handleNavigate}>
+				<Image src={arrowLeft} alt={'arrowLeft'} />
+				<span className={styles.back}>Назад</span>
+			</Button>
+			<Article type={'brief'}>
+				<Image src={imageSrc} alt={'logoQuestion'} />
+				<div className={styles.brief}>
+					<h4 className='text-24-med'>{title}</h4>
+					<p className={'text-16-med'}>{description}</p>
+				</div>
+			</Article>
+
+			<Article type={'short'}>
+				<h4 className='text-20-med'>{title}</h4>
+				<p className={'text-16-med'}>{shortAnswer}</p>
+			</Article>
+
+			<Article type={'long'}>
+				<h4 className='text-20-med'>{title}</h4>
+				<p className={'text-16-med'}>{longAnswer}</p>
+			</Article>
+		</section>
+	);
+};
+
+export default QuestionInfo;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\question\ui\QuestionList\QuestionList.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.wrapper {
+	padding: var(--pd-24) var(--pd-20) var(--pd-40);
+	background-color: var(--color-white);
+	border-radius: var(--border-radius-24);
+}
+
+.text {
+	padding-bottom: var(--pd-16);
+	margin-bottom: var(--mb-40);
+	border-bottom: 1px solid var(--color-black-50);
+}
+
+.list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-24);
+	list-style: none;
+	padding-left: 0;
+}
+
+.list li {
+	position: relative;
+	padding-left: var(--pd-24);
+}
+
+.list li::before {
+	content: '•';
+	position: absolute;
+	left: 0;
+	color: var(--color-purple-brand);
+	font-size: var(--fs-24);
+	line-height: 1;
+	width: 24px;
+	height: 24px;
+	display: flex;
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\question\ui\QuestionList\QuestionList.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import { QuestionItem } from '@entities/question';
+import styles from './QuestionList.module.css';
+import { useFetchQuestionsQuery } from '@entities/question/api/questionApi';
+
+const QuestionList = () => {
+	const { data: questions, isLoading, isError } = useFetchQuestionsQuery();
+
+	if (isLoading) return <div>Загрузка...</div>;
+	if (isError || !questions) return <div>Ошибка...</div>;
+
+	return (
+		<div className={styles.wrapper}>
+			<article className={styles.content}>
+				<h3 className={styles.text}>Вопросы React, Javascript</h3>
+				<ul className={styles.list}>
+					{questions.map((question) => (
+						<QuestionItem key={question.id} question={question} />
+					))}
+				</ul>
+			</article>
+		</div>
+	);
+};
+
+export default QuestionList;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\question\ui\QuestionSidebar\QuestionSidebar.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.sidebar {
+	display: flex;
+	flex-direction: column;
+	height: fit-content;
+	padding: var(--pd-24) var(--pd-24) 0 var(--pd-24);
+	border-radius: var(--border-radius-24);
+	background-color: var(--color-white);
+}
+
+.title {
+	margin-bottom: var(--mb-8);
+}
+
+.btns,
+.keywords {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-rows: auto;
+	grid-auto-columns: max-content;
+	row-gap: var(--gap-8);
+	column-gap: var(--gap-12);
+	justify-content: flex-start;
+	margin-bottom: var(--mb-24);
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\question\ui\QuestionSidebar\QuestionSidebar.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './QuestionSidebar.module.css';
+import { QuestionMeta } from '@entities/question';
+import type { PublicQuestion } from '@entities/question/model/types';
+import { Button } from '@shared/ui/index';
+interface QuestionSidebarProps {
+	question: PublicQuestion;
+}
+
+const QuestionSidebar = ({ question }: QuestionSidebarProps) => {
+	const { rate, complexity, questionSkills, keywords } = question;
+
+	return (
+		<section className={styles.sidebar}>
+			<span className={`${styles.title} text-16-med`}>Уровень:</span>
+			<QuestionMeta rate={rate} complexity={complexity} />
+
+			<span className={`${styles.title} text-16-med`}>Навыки:</span>
+			<div className={styles.btns}>
+				{questionSkills?.map(({ id, title }) => (
+					<Button key={id} type='skill' size={'M'} state={'default'} isActive>
+						{title}
+					</Button>
+				))}
+			</div>
+
+			<span className={`${styles.title} text-16-med`}>Ключевые слова:</span>
+			<div className={styles.keywords}>
+				{keywords?.map((keyword) => (
+					<Button
+						key={keyword}
+						type={'link'}
+						size={'L'}
+						state={'default'}
+						isActive
+					>
+						#{keyword}
+					</Button>
+				))}
+			</div>
+		</section>
+	);
+};
+
+export default QuestionSidebar;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: tsconfig.app.json
+────────────────────────────────────────────────────────────────────────────────
+
+{
+	"compilerOptions": {
+		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+		"target": "ES2022",
+		"useDefineForClassFields": true,
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"module": "ESNext",
+		"types": ["vite/client"],
+		"skipLibCheck": true,
+
+		
+		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"moduleDetection": "force",
+		"noEmit": true,
+		"jsx": "react-jsx",
+
+		
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"erasableSyntaxOnly": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUncheckedSideEffectImports": true,
+
+		"baseUrl": ".",
+		"paths": {
+			"@app/*": ["./src/app/*"],
+			"@pages/*": ["./src/pages/*"],
+			"@widgets/*": ["./src/widgets/*"],
+			"@features/*": ["./src/features/*"],
+			"@entities/*": ["./src/entities/*"],
+			"@shared/*": ["./src/shared/*"]
+		}
+	},
+	"include": ["src"]
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: tsconfig.json
+────────────────────────────────────────────────────────────────────────────────
+
+{
+	"files": [],
+	"references": [
+		{ "path": "./tsconfig.app.json" },
+		{ "path": "./tsconfig.node.json" }
+	]
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: tsconfig.node.json
+────────────────────────────────────────────────────────────────────────────────
+
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "types": ["node"],
+    "skipLibCheck": true,
+
+    
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": ["vite.config.ts"]
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: vite.config.ts
+────────────────────────────────────────────────────────────────────────────────
+
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+
+export default defineConfig({
+	plugins: [react()],
+	resolve: {
+		alias: {
+			'@app': path.resolve(__dirname, './src/app'),
+			'@pages': path.resolve(__dirname, './src/pages'),
+			'@widgets': path.resolve(__dirname, './src/widgets'),
+			'@features': path.resolve(__dirname, './src/features'),
+			'@entities': path.resolve(__dirname, './src/entities'),
+			'@shared': path.resolve(__dirname, './src/shared'),
+		},
+	},
+});
+
+────────────────────────────────────────────────────────────────────────────────
+
+================================================================================
+# END OF PROJECT CONTENT

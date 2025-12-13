@@ -1,38 +1,33 @@
-import { useQuestionById } from '@features/question/hooks/useQuestionById';
 import styles from './QuestionInfo.module.css';
 import { Article, Image } from '@shared/ui';
-import { logoQuestion } from '@shared/assets';
-
+import type { PublicQuestion } from '@entities/question/model/types';
 interface QuestionInfo {
-	questionId: string;
+	question: PublicQuestion;
 }
 
-const QuestionInfo = ({ questionId }: QuestionInfo) => {
-	const { question, isLoading, isError } = useQuestionById(questionId);
-
-	if (isLoading) return <div>Загрузка...</div>;
-	if (isError) return <div>Ошибка...</div>;
+const QuestionInfo = ({ question }: QuestionInfo) => {
+	const { imageSrc, title, description, shortAnswer, longAnswer } = question;
 
 	return (
-		<section className={styles.answerInfo}>
+		<div className={styles.answerInfo}>
 			<Article type={'brief'}>
-				<Image src={question.imageSrc ?? logoQuestion} alt={'logoQuestion'} />
+				<Image src={imageSrc} alt={'logoQuestion'} />
 				<div className={styles.brief}>
-					<h4 className='text-24-med'>{question.title}</h4>
-					<p className={'text-16-med'}>{question.description}</p>
+					<h4 className='text-24-med'>{title}</h4>
+					<p className={'text-16-med'}>{description}</p>
 				</div>
 			</Article>
 
 			<Article type={'short'}>
-				<h4 className='text-20-med'>{question.title}</h4>
-				<p className={'text-16-med'}>{question.shortAnswer}</p>
+				<h4 className='text-20-med'>{title}</h4>
+				<p className={'text-16-med'}>{shortAnswer}</p>
 			</Article>
 
 			<Article type={'long'}>
-				<h4 className='text-20-med'>{question.title}</h4>
-				<p className={'text-16-med'}>{question.longAnswer}</p>
+				<h4 className='text-20-med'>{title}</h4>
+				<p className={'text-16-med'}>{longAnswer}</p>
 			</Article>
-		</section>
+		</div>
 	);
 };
 
