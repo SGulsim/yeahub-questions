@@ -4,8 +4,7 @@ import type { PublicQuestion } from '@entities/question/model/types';
 import QuestionMeta from '../QuestionMeta/QuestionMeta';
 import { Image } from '@shared/ui';
 import { Link } from 'react-router-dom';
-import { arrowRight, preview } from '@shared/assets';
-
+import { arrowRight } from '@shared/assets';
 interface QuestionItemProps {
 	question: PublicQuestion;
 }
@@ -26,7 +25,7 @@ const QuestionItem = ({ question }: QuestionItemProps) => {
 			</div>
 			<div className={styles.content}>
 				<QuestionMeta rate={rate} complexity={complexity} />
-				<Image src={imageSrc ?? preview} alt={'превью'} />
+				<Image src={imageSrc} alt={'превью'} />
 				<div className={styles.body}>{shortAnswer}</div>
 				<Link to={`/detail/${id}`} className={styles.link}>
 					Подробнее

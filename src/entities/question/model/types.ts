@@ -1,25 +1,5 @@
-export interface Specialization {
-	id: number;
-	title: string;
-	description: string;
-	imageSrc: string;
-	createdAt: string;
-	updatedAt: string;
-	createdBy: {
-		id: string;
-		username: string;
-	};
-}
-
-export interface Skill {
-	id: number;
-	title: string;
-	description: string;
-	imageSrc: string;
-	createdAt: string;
-	updatedAt: string;
-}
-
+import type { Skill } from '@entities/skills';
+import type { Specialization } from '@entities/specialization';
 export interface PublicQuestion {
 	id: number;
 	title: string;
@@ -34,7 +14,6 @@ export interface PublicQuestion {
 	questionSkills: Skill[];
 	questionSpecializations: Specialization[];
 }
-
 export interface PublicQuestionsApiResponse {
 	data: PublicQuestion[];
 	limit: number;

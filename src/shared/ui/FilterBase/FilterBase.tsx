@@ -1,51 +1,50 @@
 import styles from './FilterBase.module.css';
-import Button from '../Button/Button';
-import { useState } from 'react';
-
-interface Data {
-	id: number;
-	name: string;
-}
-
+import type { FilterItem } from '@shared/model';
+import { Button } from '@shared/ui';
 interface FilterBaseProps {
 	title: string;
-	items: Data[];
-	isNeedAll?: boolean;
+	items: FilterItem[];
+	maxVisible?: number;
+	showAll?: boolean;
+	onToggleShowAll?: () => void;
+	onItemClick?: (id: number) => void;
 }
 
-const FilterBase = ({ title, items, isNeedAll }: FilterBaseProps) => {
-	const [showAll, setShowAll] = useState(false);
-
-	let visibleButtons;
-	if (isNeedAll) {
-		visibleButtons = showAll ? items : items.slice(0, 5);
-	} else {
-		visibleButtons = items;
-	}
-
-	const handleShowAll = () => setShowAll(true);
-	const handleHideAll = () => setShowAll(false);
+const FilterBase = ({
+	title,
+	items,
+	maxVisible,
+	showAll,
+	onToggleShowAll,
+	onItemClick,
+}: FilterBaseProps) => {
+	const visibleItems =
+		maxVisible && !showAll ? items.slice(0, maxVisible) : items;
 
 	return (
 		<div className={styles.filters}>
 			<span className='text-14-reg'>{title}</span>
+
 			<div
-				className={`${styles.btns} ${isNeedAll ? styles['multi-column'] : ''}`}
+				className={`${styles.btns} ${showAll ? styles['multi-column'] : ''}`}
 			>
-				{visibleButtons.map(({ id, name }) => (
-					<Button key={id} type='skill' size={'M'} state={'default'} isActive>
-						{name}
+				{visibleItems.map(({ id, title, isActive }) => (
+					<Button
+						key={id}
+						type='skill'
+						size='M'
+						state='default'
+						isActive={isActive}
+						onClick={() => onItemClick?.(id)}
+					>
+						{title}
 					</Button>
 				))}
 			</div>
-			{isNeedAll && (
-				<Button
-					type='link'
-					size='M'
-					state='default'
-					onClick={showAll ? handleHideAll : handleShowAll}
-				>
-					{showAll ? 'Скрыть' : 'Посмотреть все'}
+
+			{maxVisible && onToggleShowAll && (
+				<Button type='link' size='M' state='default' onClick={onToggleShowAll}>
+					{showAll ? 'Скрыть' : 'Показать все'}
 				</Button>
 			)}
 		</div>

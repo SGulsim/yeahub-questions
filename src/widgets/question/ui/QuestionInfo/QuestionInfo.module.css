@@ -9,3 +9,8 @@
 	flex-direction: column;
 	gap: var(--gap-12);
 }
+
+.back {
+	display: inline-block;
+	margin-left: var(--mb-8);
+}
