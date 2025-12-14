@@ -26,4 +26,6 @@ export interface PublicQuestionParams {
 	rate?: number[];
 	complexity?: number[];
 	keywords?: string[];
+	page?: number;
+	limit?: number;
 }

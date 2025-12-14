@@ -1,16 +1,27 @@
 import { baseApi } from '@shared/api';
-import type { PublicQuestion, PublicQuestionParams } from '../model/types';
+import type {
+	PublicQuestion,
+	PublicQuestionParams,
+	PublicQuestionsApiResponse,
+} from '../model/types';
 import type { ApiResponse } from '@shared/model';
 import { logoQuestion, preview } from '@shared/assets';
 
 const questionApi = baseApi.injectEndpoints({
 	endpoints: (builder) => ({
 		fetchQuestions: builder.query<
-			PublicQuestion[],
-			PublicQuestionParams | void
+			PublicQuestionsApiResponse,
+			(PublicQuestionParams & { page?: number }) | void
 		>({
 			query: (params) => {
 				const queryParams: Record<string, string> = {};
+
+				if (params?.page) {
+					queryParams.page = String(params.page);
+				}
+				if (params?.limit) {
+					queryParams.limit = String(params.limit);
+				}
 				if (params?.specialization) {
 					queryParams.specialization = String(params.specialization);
 				}
@@ -32,14 +43,22 @@ const questionApi = baseApi.injectEndpoints({
 					params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
 				};
 			},
-			transformResponse: (response: ApiResponse<PublicQuestion>) =>
-				response.data.map((question) => ({
-					...question,
-					imageSrc: question.imageSrc || preview,
-					keywords: question.keywords ?? [],
-					questionSkills: question.questionSkills ?? [],
-					questionSpecializations: question.questionSpecializations ?? [],
-				})),
+			transformResponse: (response: ApiResponse<PublicQuestion>) => {
+				const transformedData = {
+					data: response.data.map((question) => ({
+						...question,
+						imageSrc: question.imageSrc || preview,
+						keywords: question.keywords ?? [],
+						questionSkills: question.questionSkills ?? [],
+						questionSpecializations: question.questionSpecializations ?? [],
+					})),
+					page: response.page,
+					total: response.total,
+					limit: response.limit,
+				};
+
+				return transformedData;
+			},
 		}),
 		fetchQuestionById: builder.query<PublicQuestion, string>({
 			query: (id) => `questions/public-questions/${id}`,
