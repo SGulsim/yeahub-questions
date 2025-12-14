@@ -4,6 +4,7 @@ import path from 'path';
 
 // https://vite.dev/configw/
 export default defineConfig({
+	base: '/yeahub-questions/',
 	plugins: [react()],
 	resolve: {
 		alias: {
