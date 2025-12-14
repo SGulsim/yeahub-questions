@@ -11,7 +11,7 @@ const QuestionListSkeleton = ({ count = 5 }: QuestionListSkeletonProps) => {
 				<div className={`${styles.skeletonHeader} skeleton-pulse`}></div>
 
 				<ul className={styles.listSkeleton}>
-					{Array.from({ length: count }, (_, i) => (
+					{[...Array(count)].map((_, i) => (
 						<li key={i} className={styles.itemSkeleton}>
 							<div className={`${styles.skeletonTitle} skeleton-pulse`}></div>
 

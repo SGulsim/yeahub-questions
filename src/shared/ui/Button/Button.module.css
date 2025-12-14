@@ -2,6 +2,22 @@
 	cursor: pointer;
 	outline: none;
 	border: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--gap-8);
+	border-radius: var(--border-radius-8);
+	background: transparent;
+	transition: background-color 0.2s ease, color 0.2s ease,
+		border-color 0.2s ease;
+}
+
+.sizeM {
+	min-height: 36px;
+}
+
+.sizeL {
+	min-height: 44px;
 }
 
 .primary {
@@ -9,7 +25,6 @@
 	color: var(--color-white);
 	padding: var(--pd-12) var(--pd-29);
 	border-radius: var(--border-radius-12);
-	transition: background-color 0.2s ease;
 }
 
 .primary:hover {
@@ -20,7 +35,7 @@
 	background-color: transparent;
 	color: var(--color-purple-700);
 	transition: text-decoration 0.2s ease;
-	text-align: left;
+	justify-content: flex-start;
 }
 
 .link:hover {
@@ -32,7 +47,6 @@
 	border: 1px solid var(--color-black-200);
 	border-radius: var(--border-radius-12);
 	background-color: transparent;
-	transition: background-color 0.1s ease, border-color 0.1s ease;
 }
 
 .skill:hover {
@@ -45,4 +59,25 @@
 
 .skillActive {
 	border-color: var(--color-purple-700);
+}
+
+.pagination {
+	min-width: 30px;
+	height: 30px;
+	border-radius: var(--border-radius-12);
+}
+
+.pagination:hover {
+	background-color: rgba(85, 9, 204, 0.08);
+}
+
+.paginationActive {
+	background-color: var(--color-purple-700);
+	color: var(--color-white);
+}
+
+.button.disabled {
+	cursor: default;
+	opacity: 0.5;
+	pointer-events: none;
 }

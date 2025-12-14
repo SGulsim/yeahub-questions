@@ -6,3 +6,5 @@ export { default as Article } from './Article/Article';
 export { default as Spinner } from './Spinner/Spinner';
 export { default as CenteredSpinner } from './Spinner/CenteredSpinner';
 export { default as EmptyState } from './EmptyState/EmptyState';
+export { default as Pagination } from './Pagination/ui/Pagination/Pagination';
+export { default as PaginationButtons } from './Pagination/ui/PaginationButtons/PaginationButtons';
