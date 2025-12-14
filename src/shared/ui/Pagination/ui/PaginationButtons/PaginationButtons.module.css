@@ -1,0 +1,30 @@
+.pagination {
+	display: flex;
+	gap: var(--gap-12);
+	align-items: center;
+	justify-content: center;
+}
+
+.list {
+	display: flex;
+	align-items: center;
+	gap: var(--gap-4);
+}
+
+.pageButton {
+	font-size: var(--fs-14);
+}
+
+.arrowDisabled {
+	border-color: var(--color-black-100);
+}
+
+.arrowIcon {
+	width: 28px;
+	height: 28px;
+}
+
+.dots {
+	padding: 0 var(--pd-6);
+	color: var(--color-black-300);
+}

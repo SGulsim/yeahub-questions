@@ -9,9 +9,11 @@ import {
 	selectActiveSpecialization,
 	selectQuestionFilters,
 } from '@features/question/questionFilter';
-import { CenteredSpinner, EmptyState } from '@shared/ui';
+import { selectQuestionsPage } from '@features/question/questionPagination/model/questionPageSelectors';
+import { EmptyState } from '@shared/ui';
 import { resetFilters } from '@features/question/questionFilter/model/filterSlice';
 import QuestionListSkeleton from './QuestionListSkeleton';
+import { QuestionPagePagination } from '@features/question/questionPagination/ui/QuestionPagePagination';
 
 const QuestionList = () => {
 	const dispatch = useAppDispatch();
@@ -19,6 +21,7 @@ const QuestionList = () => {
 		selectQuestionFilters
 	);
 	const activeSpecialization = useAppSelector(selectActiveSpecialization);
+	const page = useAppSelector(selectQuestionsPage);
 
 	const queryArgs = activeSpecialization
 		? {
@@ -27,20 +30,25 @@ const QuestionList = () => {
 				complexity,
 				specialization: activeSpecialization.id,
 				keywords,
+				page,
+				limit: 10,
 		  }
 		: undefined;
 
-	const { data: questions, isLoading } = useFetchQuestionsQuery(queryArgs);
+	const { data: questionsResponse, isLoading } =
+		useFetchQuestionsQuery(queryArgs);
 
-	if (isLoading) return <QuestionListSkeleton count={questions?.length || 0} />;
+	if (isLoading) return <QuestionListSkeleton count={10} />;
 
-	if (!questions || questions.length === 0)
+	if (!questionsResponse?.data || questionsResponse.data.length === 0)
 		return (
 			<EmptyState
 				title='Вопросы не найдены'
 				message='Попробуйте изменить параметры фильтрации или выбрать другую специализацию'
 				actionLabel='Сбросить фильтры'
-				onAction={() => dispatch(resetFilters())}
+				onAction={() => {
+					dispatch(resetFilters());
+				}}
 			/>
 		);
 
@@ -49,10 +57,12 @@ const QuestionList = () => {
 			<article className={styles.content}>
 				<h3 className={styles.text}>Вопросы {activeSpecialization?.title}</h3>
 				<ul className={styles.list}>
-					{questions.map((question) => (
+					{questionsResponse.data.map((question) => (
 						<QuestionItem key={question.id} question={question} />
 					))}
 				</ul>
+
+				<QuestionPagePagination questionsResponse={questionsResponse} />
 			</article>
 		</div>
 	);
