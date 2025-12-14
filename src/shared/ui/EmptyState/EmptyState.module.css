@@ -1,0 +1,31 @@
+.emptyState {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--gap-16);
+	padding: var(--pd-40) var(--pd-24);
+	text-align: center;
+}
+
+.icon {
+	width: 64px;
+	height: 64px;
+	margin-bottom: var(--mb-16);
+	opacity: 0.6;
+}
+
+.title {
+	color: var(--color-black-800);
+	font-weight: var(--fw-sb);
+}
+
+.message {
+	color: var(--color-black-700);
+	max-width: 400px;
+	line-height: var(--lh-130);
+}
+
+.button {
+	margin-top: var(--mb-16);
+}

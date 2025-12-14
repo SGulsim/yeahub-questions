@@ -12,3 +12,5 @@ export const ratingButtons = [
 	{ id: 4, title: '4', value: [4] },
 	{ id: 5, title: '5', value: [5] },
 ];
+
+export const DEFAULT_SPECIALIZATION_ID = 11;

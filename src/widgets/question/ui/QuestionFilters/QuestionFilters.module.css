@@ -7,3 +7,46 @@
 	border-radius: var(--border-radius-24);
 	height: fit-content;
 }
+
+/* Скелетон стили */
+.skeletonSearch {
+	width: 100%;
+	height: 48px;
+	border-radius: var(--border-radius-68);
+}
+
+.skeletonFilter {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-12);
+}
+
+.skeletonFilterTitle {
+	width: 120px;
+	height: 20px;
+	border-radius: var(--border-radius-4);
+}
+
+.skeletonFilterItems {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--gap-8);
+}
+
+.skeletonFilterItem {
+	width: 80px;
+	height: 36px;
+	border-radius: var(--border-radius-12);
+}
+
+.skeletonFilterItemLarge {
+	width: 120px;
+	height: 36px;
+	border-radius: var(--border-radius-12);
+}
+
+.skeletonShowAll {
+	width: 80px;
+	height: 20px;
+	border-radius: var(--border-radius-4);
+}

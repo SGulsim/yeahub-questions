@@ -4,17 +4,13 @@ import { Link, useParams } from 'react-router-dom';
 import { Image } from '@shared/ui';
 import { arrowLeft } from '@shared/assets';
 import QuestionDetail from '@widgets/question/ui/QuestionDetail/QuestionDetail';
+import QuestionDetailSkeleton from '@widgets/question/ui/QuestionDetail/QuestionDetailSkeleton';
 
 const QuestionDetailPage = () => {
 	const { questionId } = useParams<{ questionId: string }>();
-	const {
-		data: question,
-		isLoading,
-		isError,
-	} = useFetchQuestionByIdQuery(questionId!);
+	const { data: question, isLoading } = useFetchQuestionByIdQuery(questionId!);
 
-	if (isLoading) return <div>Загрузка...</div>;
-	if (isError || !question) return <div>Ошибка...</div>;
+	if (isLoading) return <QuestionDetailSkeleton />;
 
 	return (
 		<main className={styles.content}>
@@ -22,7 +18,7 @@ const QuestionDetailPage = () => {
 				<Image src={arrowLeft} alt={'arrowLeft'} />
 				<span className={styles.back}>Назад</span>
 			</Link>
-			<QuestionDetail question={question} />
+			<QuestionDetail question={question!} />
 		</main>
 	);
 };

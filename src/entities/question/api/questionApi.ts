@@ -26,7 +26,6 @@ const questionApi = baseApi.injectEndpoints({
 				if (params?.keywords && params.keywords.length > 0) {
 					queryParams.keywords = params.keywords.join(',');
 				}
-				console.log(Object.keys(queryParams), queryParams);
 
 				return {
 					url: 'questions/public-questions',

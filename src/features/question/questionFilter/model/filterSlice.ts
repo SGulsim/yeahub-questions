@@ -59,8 +59,11 @@ const questionFilterSlice = createSlice({
 			state.keywords = trimmed ? [trimmed] : [];
 		},
 
-		resetFilters() {
-			return initialState;
+		resetFilters(state) {
+			return {
+				...initialState,
+				specializations: state.specializations,
+			};
 		},
 	},
 });

@@ -7,8 +7,8 @@ import {
 import { setRating } from '../../model/filterSlice';
 
 const RatingFilter = () => {
-	const activeRate = useAppSelector((state) => state.questionFilters.rate);
 	const dispatch = useAppDispatch();
+	const activeRate = useAppSelector((state) => state.questionFilters.rate);
 
 	const items = ratingButtons.map((rate) => {
 		const isActive =
