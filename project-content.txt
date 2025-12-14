@@ -1,6 +1,6 @@
 # PROJECT CONTENT COLLECTION
-# Generated: 2025-12-13T16:46:20.944Z
-# Total files: 77
+# Generated: 2025-12-14T08:23:25.432Z
+# Total files: 78
 
 ================================================================================
 
@@ -368,11 +368,11 @@ import { Provider } from 'react-redux';
 import { store } from './providers/store/configs/store';
 
 createRoot(document.getElementById('root')!).render(
-	<StrictMode>
-		<Provider store={store}>
-			<RouterProvider router={router} />
-		</Provider>
-	</StrictMode>
+	
+	<Provider store={store}>
+		<RouterProvider router={router} />
+	</Provider>
+	
 );
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -710,7 +710,6 @@ const questionApi = baseApi.injectEndpoints({
 			PublicQuestionParams | void
 		>({
 			query: (params) => {
-				console.log(params);
 				const queryParams: Record<string, string> = {};
 				if (params?.specialization) {
 					queryParams.specialization = String(params.specialization);
@@ -719,13 +718,15 @@ const questionApi = baseApi.injectEndpoints({
 					queryParams.skills = params.skills.join(',');
 				}
 				if (params?.rate && params.rate.length > 0) {
-					console.log(params.rate.join(','));
-
 					queryParams.rate = params.rate.join(',');
 				}
 				if (params?.complexity && params.complexity.length > 0) {
 					queryParams.complexity = params.complexity.join(',');
 				}
+				if (params?.keywords && params.keywords.length > 0) {
+					queryParams.keywords = params.keywords.join(',');
+				}
+				console.log(Object.keys(queryParams), queryParams);
 
 				return {
 					url: 'questions/public-questions',
@@ -798,6 +799,7 @@ export interface PublicQuestionParams {
 	specialization?: number;
 	rate?: number[];
 	complexity?: number[];
+	keywords?: string[];
 }
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -1068,6 +1070,7 @@ export { default as ComplexityFilter } from './ui/ComplexityFilter/ComplexityFil
 export { default as RatingFilter } from './ui/RatingFilter/RatingFilter';
 export { default as SkillsFilter } from './ui/SkillsFilter/SkillsFilter';
 export { default as SpecializationFilter } from './ui/SpecializationFilter/SpecializationFilter';
+export { default as SearchInput } from './ui/SearchInput/SearchInput';
 
 export {
 	selectSkillsFilter,
@@ -1131,6 +1134,7 @@ export const selectQuestionFilters = (state: RootState) => ({
 	specialization: state.questionFilters.specializations[0]?.id,
 	complexity: state.questionFilters.complexity,
 	rate: state.questionFilters.rate,
+	keywords: state.questionFilters.keywords,
 });
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -1145,12 +1149,13 @@ import type { Skill } from '@entities/skills';
 import type { Specialization } from '@entities/specialization';
 
 const initialState: QuestionFilterState = {
-	showAllSkills: false,
-	showAllSpecializations: false,
 	specializations: [],
 	skills: [],
 	rate: [],
 	complexity: [],
+	keywords: [],
+	showAllSkills: false,
+	showAllSpecializations: false,
 };
 
 const questionFilterSlice = createSlice({
@@ -1171,6 +1176,10 @@ const questionFilterSlice = createSlice({
 			state.showAllSkills = !state.showAllSkills;
 		},
 
+		toggleShowAllSpecializations(state) {
+			state.showAllSpecializations = !state.showAllSpecializations;
+		},
+
 		setSpecialization(state, action: PayloadAction<Specialization>) {
 			const specialization = action.payload;
 
@@ -1181,16 +1190,16 @@ const questionFilterSlice = createSlice({
 			state.showAllSkills = false;
 		},
 
-		toggleShowAllSpecializations(state) {
-			state.showAllSpecializations = !state.showAllSpecializations;
-		},
-
 		setComplexity(state, action: PayloadAction<number[]>) {
 			state.complexity = action.payload;
 		},
 
 		setRating(state, action: PayloadAction<number[]>) {
 			state.rate = action.payload;
+		},
+
+		setSearch(state, action: PayloadAction<string[]>) {
+			state.keywords = action.payload;
 		},
 
 		resetFilters() {
@@ -1201,11 +1210,12 @@ const questionFilterSlice = createSlice({
 
 export const {
 	selectSkill,
-	setSpecialization,
 	toggleShowAllSkills,
 	toggleShowAllSpecializations,
+	setSpecialization,
 	setComplexity,
 	setRating,
+	setSearch,
 	resetFilters,
 } = questionFilterSlice.actions;
 
@@ -1218,14 +1228,14 @@ FILE: src\features\question\questionFilter\model\types.ts
 
 import type { Skill } from '@entities/skills';
 import type { Specialization } from '@entities/specialization';
-
 export interface QuestionFilterState {
-	showAllSkills: boolean;
-	showAllSpecializations: boolean;
 	specializations: Specialization[];
 	skills: Skill[];
 	rate: number[];
 	complexity: number[];
+	keywords: string[];
+	showAllSkills: boolean;
+	showAllSpecializations: boolean;
 }
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -1240,27 +1250,42 @@ import {
 	useAppSelector,
 } from '@app/providers/store/configs/hooks';
 import { setComplexity } from '../../model/filterSlice';
-import { selectActiveComplexity } from '../../model/filterSelectors';
 
 const ComplexityFilter = () => {
-	const activeComplexity = useAppSelector(selectActiveComplexity);
+	const activeComplexity = useAppSelector(
+		(state) => state.questionFilters.complexity
+	);
 	const dispatch = useAppDispatch();
 
-	const items = difficultyButtons.map((btn) => ({
-		id: btn.id,
-		title: btn.title,
-		isActive: btn.id === activeComplexity,
-	}));
+	const items = difficultyButtons.map((btn) => {
+		const isActive =
+			activeComplexity.length === btn.values.length &&
+			btn.values.every((value) => activeComplexity.includes(value));
+
+		return {
+			id: btn.id,
+			title: btn.title,
+			isActive,
+		};
+	});
+
+	const handleItemClick = (id: number) => {
+		const button = difficultyButtons.find((btn) => btn.id === id);
+		if (!button) return;
+
+		const isActive =
+			activeComplexity.length === button.values.length &&
+			button.values.every((value) => activeComplexity.includes(value));
+
+		dispatch(setComplexity(isActive ? [] : button.values));
+	};
 
 	return (
 		<FilterBase
 			title='Уровень сложности'
 			items={items}
 			maxVisible={items.length}
-			onItemClick={(id) => {
-				const values = difficultyButtons.filter((btn) => btn.id === id);
-				return dispatch(setComplexity(values[0].values));
-			}}
+			onItemClick={handleItemClick}
 		/>
 	);
 };
@@ -1279,32 +1304,119 @@ import {
 	useAppSelector,
 } from '@app/providers/store/configs/hooks';
 import { setRating } from '../../model/filterSlice';
-import { selectActiveRate } from '../../model/filterSelectors';
 
 const RatingFilter = () => {
-	const activeRate = useAppSelector(selectActiveRate);
+	const activeRate = useAppSelector((state) => state.questionFilters.rate);
 	const dispatch = useAppDispatch();
 
-	const items = ratingButtons.map((rate) => ({
-		id: rate.id,
-		title: rate.title,
-		isActive: rate.id === activeRate,
-	}));
+	const items = ratingButtons.map((rate) => {
+		const isActive =
+			activeRate.length === rate.value.length &&
+			rate.value.every((value) => activeRate.includes(value));
+
+		return {
+			id: rate.id,
+			title: rate.title,
+			isActive,
+		};
+	});
+
+	const handleItemClick = (id: number) => {
+		const button = ratingButtons.find((rate) => rate.id === id);
+		if (!button) return;
+
+		const isActive =
+			activeRate.length === button.value.length &&
+			button.value.every((value) => activeRate.includes(value));
+
+		dispatch(setRating(isActive ? [] : button.value));
+	};
 
 	return (
 		<FilterBase
 			title='Рейтинг'
 			items={items}
 			maxVisible={items.length}
-			onItemClick={(id) => {
-				const values = ratingButtons.filter((btn) => btn.id === id);
-				return dispatch(setRating(values[0].value));
-			}}
+			onItemClick={handleItemClick}
 		/>
 	);
 };
 
 export default RatingFilter;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\features\question\questionFilter\ui\SearchInput\SearchInput.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.search {
+	display: flex;
+	align-items: center;
+	gap: var(--pd-8);
+	border: 1px solid var(--color-black-50);
+	border-radius: var(--border-radius-68);
+	padding: var(--pd-14) var(--pd-24);
+	background: white;
+}
+
+.search:focus-visible {
+	border: 1px solid var(--color-purple-700);
+}
+
+.input {
+	flex: 1 1 auto;
+	min-width: 0;
+	color: var(--color-black-800);
+	border: none;
+	background: transparent;
+	font-size: var(--fs-16);
+}
+
+.input::placeholder {
+	color: var(--color-black-300);
+}
+
+.input:focus {
+	outline: none;
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\features\question\questionFilter\ui\SearchInput\SearchInput.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './SearchInput.module.css';
+import { Image } from '@shared/ui';
+import { search } from '@shared/assets';
+import { useEffect, useState } from 'react';
+import { useDebounce } from '@shared/hooks/useDebounce';
+import { useAppDispatch } from '@app/providers/store/configs/hooks';
+import { setSearch } from '../../model/filterSlice';
+
+const SearchInput = () => {
+	const [value, setValue] = useState('');
+	const debouncedValue = useDebounce(value);
+	const dispatch = useAppDispatch();
+
+	useEffect(() => {
+		dispatch(setSearch([debouncedValue.trim()]));
+	}, [debouncedValue]);
+
+	return (
+		<div className={styles.search}>
+			<Image src={search} alt={'Поиск вопросов'} />
+			<input
+				className={styles.input}
+				type={'text'}
+				placeholder='Введите запрос...'
+				value={value}
+				onChange={(e) => setValue(e.target.value)}
+			/>
+		</div>
+	);
+};
+
+export default SearchInput;
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -1584,6 +1696,27 @@ export { default as arrowLeft } from './icons/arrowLeft.svg';
 export { default as arrowUp } from './icons/arrowUp.svg';
 export { default as logo } from './icons/logo.svg';
 export { default as search } from './icons/search.svg';
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\hooks\useDebounce.ts
+────────────────────────────────────────────────────────────────────────────────
+
+import { useEffect, useState } from 'react';
+
+export const useDebounce = (value: string, delay = 300) => {
+	const [debouncedValue, setDebouncedValue] = useState('');
+
+	useEffect(() => {
+		let timerId = setTimeout(() => {
+			setDebouncedValue(value);
+		}, delay);
+
+		return () => clearTimeout(timerId);
+	}, [value, delay]);
+
+	return debouncedValue;
+};
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -1916,7 +2049,6 @@ FILE: src\shared\ui\index.ts
 export { default as Button } from './Button/Button';
 export { default as Image } from './Image/Image';
 export { default as Logo } from './Logo/Logo';
-export { default as Search } from './Search/Search';
 export { default as FilterBase } from './FilterBase/FilterBase';
 export { default as Article } from './Article/Article';
 
@@ -1933,58 +2065,6 @@ const Logo = () => {
 };
 
 export default Logo;
-
-────────────────────────────────────────────────────────────────────────────────
-
-FILE: src\shared\ui\Search\Search.module.css
-────────────────────────────────────────────────────────────────────────────────
-
-.search {
-	display: flex;
-	align-items: center;
-	gap: var(--pd-8);
-	border: 1px solid var(--color-black-50);
-	border-radius: var(--border-radius-68);
-	padding: var(--pd-14) var(--pd-24);
-	background: white;
-}
-
-.input {
-	flex: 1 1 auto;
-	min-width: 0;
-	color: var(--color-black-800);
-	border: none;
-	background: transparent;
-	font-size: var(--fs-16);
-}
-
-.input::placeholder {
-	color: var(--color-black-300);
-}
-
-.input:focus {
-	outline: none;
-}
-
-────────────────────────────────────────────────────────────────────────────────
-
-FILE: src\shared\ui\Search\Search.tsx
-────────────────────────────────────────────────────────────────────────────────
-
-import { search } from '@shared/assets';
-import Image from '../Image/Image';
-import styles from './Search.module.css';
-
-const Search = () => {
-	return (
-		<div role='img' className={styles.search}>
-			<Image src={search} alt={'Поиск вопросов'} />
-			<input className={styles.input} placeholder='Введите запрос...' />
-		</div>
-	);
-};
-
-export default Search;
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -2133,19 +2213,19 @@ FILE: src\widgets\question\ui\QuestionFilters\QuestionFilters.module.css
 FILE: src\widgets\question\ui\QuestionFilters\QuestionFilters.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
-import { Search } from '@shared/ui';
 import styles from './QuestionFilters.module.css';
 import {
 	ComplexityFilter,
 	RatingFilter,
 	SkillsFilter,
 	SpecializationFilter,
+	SearchInput,
 } from '@features/question/questionFilter';
 
 const QuestionFilters = () => {
 	return (
 		<aside className={styles.filters}>
-			<Search />
+			<SearchInput />
 			<SpecializationFilter />
 			<SkillsFilter />
 			<ComplexityFilter />
@@ -2275,7 +2355,9 @@ import {
 } from '@features/question/questionFilter';
 
 const QuestionList = () => {
-	const { skills, rate, complexity } = useAppSelector(selectQuestionFilters);
+	const { skills, rate, complexity, keywords } = useAppSelector(
+		selectQuestionFilters
+	);
 	const activeSpecialization = useAppSelector(selectActiveSpecialization);
 
 	const queryArgs = activeSpecialization
@@ -2284,6 +2366,7 @@ const QuestionList = () => {
 				rate,
 				complexity,
 				specialization: activeSpecialization.id,
+				keywords,
 		  }
 		: undefined;
 
@@ -2291,13 +2374,11 @@ const QuestionList = () => {
 		data: questions,
 		isLoading,
 		isError,
-	} = useFetchQuestionsQuery(queryArgs, {
-		refetchOnMountOrArgChange: true,
-	});
+	} = useFetchQuestionsQuery(queryArgs);
 
-	if (!activeSpecialization) return <div>Загрузка...</div>;
 	if (isLoading) return <div>Загрузка...</div>;
 	if (isError || !questions) return <div>Ошибка...</div>;
+	console.log(questions);
 
 	return (
 		<div className={styles.wrapper}>

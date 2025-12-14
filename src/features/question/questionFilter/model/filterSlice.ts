@@ -5,12 +5,13 @@ import type { Skill } from '@entities/skills';
 import type { Specialization } from '@entities/specialization';
 
 const initialState: QuestionFilterState = {
-	showAllSkills: false,
-	showAllSpecializations: false,
 	specializations: [],
 	skills: [],
 	rate: [],
 	complexity: [],
+	keywords: [],
+	showAllSkills: false,
+	showAllSpecializations: false,
 };
 
 const questionFilterSlice = createSlice({
@@ -31,6 +32,10 @@ const questionFilterSlice = createSlice({
 			state.showAllSkills = !state.showAllSkills;
 		},
 
+		toggleShowAllSpecializations(state) {
+			state.showAllSpecializations = !state.showAllSpecializations;
+		},
+
 		setSpecialization(state, action: PayloadAction<Specialization>) {
 			const specialization = action.payload;
 
@@ -41,16 +46,17 @@ const questionFilterSlice = createSlice({
 			state.showAllSkills = false;
 		},
 
-		toggleShowAllSpecializations(state) {
-			state.showAllSpecializations = !state.showAllSpecializations;
-		},
-
 		setComplexity(state, action: PayloadAction<number[]>) {
 			state.complexity = action.payload;
 		},
 
 		setRating(state, action: PayloadAction<number[]>) {
 			state.rate = action.payload;
+		},
+
+		setSearch(state, action: PayloadAction<string>) {
+			const trimmed = action.payload.trim();
+			state.keywords = trimmed ? [trimmed] : [];
 		},
 
 		resetFilters() {
@@ -61,11 +67,12 @@ const questionFilterSlice = createSlice({
 
 export const {
 	selectSkill,
-	setSpecialization,
 	toggleShowAllSkills,
 	toggleShowAllSpecializations,
+	setSpecialization,
 	setComplexity,
 	setRating,
+	setSearch,
 	resetFilters,
 } = questionFilterSlice.actions;
 
