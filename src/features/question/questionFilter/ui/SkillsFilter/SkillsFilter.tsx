@@ -6,16 +6,17 @@ import { useFetchSkillsQuery } from '@entities/skills/api/skillsApi';
 import { EmptyState, FilterBase, Spinner } from '@shared/ui';
 import {
 	selectShowAllSkills,
-	selectSkillsFilter,
 	selectActiveSpecialization,
+	selectSelectedSkillIds,
 } from '../../model/filterSelectors';
 import { toggleShowAllSkills, selectSkill } from '../../model/filterSlice';
 
 const SkillsFilter = () => {
-	const selectedSkills = useAppSelector(selectSkillsFilter);
+	const dispatch = useAppDispatch();
+
+	const selectedSkillIds = useAppSelector(selectSelectedSkillIds);
 	const showAll = useAppSelector(selectShowAllSkills);
 	const activeSpecialization = useAppSelector(selectActiveSpecialization);
-	const dispatch = useAppDispatch();
 
 	const {
 		data: skills,
@@ -46,7 +47,7 @@ const SkillsFilter = () => {
 	const items = skills.map((skill) => ({
 		id: skill.id,
 		title: skill.title,
-		isActive: selectedSkills.some(({ id }) => id === skill.id),
+		isActive: selectedSkillIds.includes(skill.id),
 	}));
 
 	return (

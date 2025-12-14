@@ -1,13 +1,12 @@
 import { useAppDispatch, useAppSelector } from '@app/providers/store';
 import { difficultyButtons } from '../../model/constants';
 import { setComplexity } from '../../model/filterSlice';
+import { selectAllComplexity } from '../../model/filterSelectors'; // Импорт селектора
 import { FilterBase } from '@shared/ui';
 
 const ComplexityFilter = () => {
 	const dispatch = useAppDispatch();
-	const activeComplexity = useAppSelector(
-		(state) => state.questionFilters.complexity
-	);
+	const activeComplexity = useAppSelector(selectAllComplexity);
 
 	const items = difficultyButtons.map((btn) => {
 		const isActive =

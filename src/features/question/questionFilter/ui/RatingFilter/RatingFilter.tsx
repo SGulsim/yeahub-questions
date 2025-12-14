@@ -1,11 +1,12 @@
 import { useAppDispatch, useAppSelector } from '@app/providers/store';
 import { ratingButtons } from '../../model/constants';
 import { setRating } from '../../model/filterSlice';
+import { selectAllRate } from '../../model/filterSelectors';
 import { FilterBase } from '@shared/ui';
 
 const RatingFilter = () => {
 	const dispatch = useAppDispatch();
-	const activeRate = useAppSelector((state) => state.questionFilters.rate);
+	const activeRate = useAppSelector(selectAllRate);
 
 	const items = ratingButtons.map((rate) => {
 		const isActive =
