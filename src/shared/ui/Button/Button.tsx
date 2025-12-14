@@ -4,7 +4,6 @@ import type { ButtonHTMLAttributes, MouseEventHandler, ReactNode } from 'react';
 type ButtonType = 'primary' | 'link' | 'skill' | 'pagination';
 type ButtonSize = 'M' | 'L';
 type ButtonState = 'default' | 'disabled';
-
 interface ButtonProps
 	extends Omit<
 		ButtonHTMLAttributes<HTMLButtonElement>,

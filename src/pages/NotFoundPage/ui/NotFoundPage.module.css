@@ -1,0 +1,23 @@
+.container {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 100vh;
+}
+
+.content {
+	text-align: center;
+	max-width: 500px;
+}
+
+.title {
+	color: var(--color-black-800);
+	margin-bottom: var(--mb-40);
+}
+
+.actions {
+	display: flex;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: var(--gap-8);
+}

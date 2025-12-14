@@ -1,2 +1,1 @@
-import QuestionDetailPage from './ui/QuestionDetailPage';
-export default QuestionDetailPage;
+export { default as QuestionDetailPage } from './ui/QuestionDetailPage';

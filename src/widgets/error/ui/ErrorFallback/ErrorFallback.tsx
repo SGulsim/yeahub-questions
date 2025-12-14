@@ -1,7 +1,6 @@
 import styles from './ErrorFallback.module.css';
 import { Button } from '@shared/ui';
 import { useNavigate } from 'react-router-dom';
-
 interface ErrorFallbackProps {
 	error?: Error;
 	resetError?: () => void;

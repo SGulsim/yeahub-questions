@@ -4,13 +4,11 @@ export interface ApiResponse<T> {
 	limit: number;
 	data: T[];
 }
-
 export interface FilterItem {
 	id: number;
 	title: string;
 	isActive?: boolean;
 }
-
 export interface FilterBaseProps {
 	title: string;
 	items: FilterItem[];

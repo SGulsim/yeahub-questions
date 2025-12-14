@@ -1,10 +1,7 @@
-import { FilterBase } from '@shared/ui/index';
+import { useAppDispatch, useAppSelector } from '@app/providers/store';
 import { ratingButtons } from '../../model/constants';
-import {
-	useAppDispatch,
-	useAppSelector,
-} from '@app/providers/store/configs/hooks';
 import { setRating } from '../../model/filterSlice';
+import { FilterBase } from '@shared/ui';
 
 const RatingFilter = () => {
 	const dispatch = useAppDispatch();

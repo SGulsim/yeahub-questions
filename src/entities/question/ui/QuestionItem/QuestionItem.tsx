@@ -15,14 +15,11 @@ const QuestionItem = ({ question }: QuestionItemProps) => {
 	const handleClick = () => setIsOpen((prev) => !prev);
 
 	return (
-		<li className={`${styles.item} ${isOpen ? styles.open : ''}`}>
-			<div
-				className={`${styles.title} text-20-med`}
-				role='button'
-				onClick={handleClick}
-			>
-				{title}
-			</div>
+		<li
+			className={`${styles.item} ${isOpen ? styles.open : ''}`}
+			onClick={handleClick}
+		>
+			<div className={`${styles.title} text-20-med`}>{title}</div>
 			<div className={styles.content}>
 				<QuestionMeta rate={rate} complexity={complexity} />
 				<Image src={imageSrc} alt={'превью'} />

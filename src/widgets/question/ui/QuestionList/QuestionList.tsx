@@ -1,44 +1,41 @@
 import styles from './QuestionList.module.css';
-import { QuestionItem } from '@entities/question';
-import { useFetchQuestionsQuery } from '@entities/question/api/questionApi';
-import {
-	useAppDispatch,
-	useAppSelector,
-} from '@app/providers/store/configs/hooks';
+import { useAppDispatch, useAppSelector } from '@app/providers/store';
 import {
 	selectActiveSpecialization,
 	selectQuestionFilters,
 } from '@features/question/questionFilter';
-import { selectQuestionsPage } from '@features/question/questionPagination/model/questionPageSelectors';
+import {
+	QuestionPagePagination,
+	selectQuestionsPage,
+} from '@features/question/questionPagination';
+import { useFetchQuestionsQuery } from '@entities/question/api/questionApi';
+import QuestionListSkeleton from './QuestionListSkeleton';
 import { EmptyState } from '@shared/ui';
 import { resetFilters } from '@features/question/questionFilter/model/filterSlice';
-import QuestionListSkeleton from './QuestionListSkeleton';
-import { QuestionPagePagination } from '@features/question/questionPagination/ui/QuestionPagePagination';
+import { QuestionItem } from '@entities/question';
 
 const QuestionList = () => {
 	const dispatch = useAppDispatch();
-	const { skills, rate, complexity, keywords } = useAppSelector(
-		selectQuestionFilters
-	);
+	const filters = useAppSelector(selectQuestionFilters);
 	const activeSpecialization = useAppSelector(selectActiveSpecialization);
 	const page = useAppSelector(selectQuestionsPage);
 
 	const queryArgs = activeSpecialization
 		? {
-				skills,
-				rate,
-				complexity,
+				...filters,
 				specialization: activeSpecialization.id,
-				keywords,
 				page,
 				limit: 10,
 		  }
 		: undefined;
 
-	const { data: questionsResponse, isLoading } =
-		useFetchQuestionsQuery(queryArgs);
+	const {
+		data: questionsResponse,
+		isLoading,
+		isFetching,
+	} = useFetchQuestionsQuery(queryArgs);
 
-	if (isLoading) return <QuestionListSkeleton count={10} />;
+	if (isLoading || isFetching) return <QuestionListSkeleton count={10} />;
 
 	if (!questionsResponse?.data || questionsResponse.data.length === 0)
 		return (

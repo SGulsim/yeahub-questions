@@ -1,11 +1,36 @@
 import { baseApi } from '@shared/api';
+import { logoQuestion, preview } from '@shared/assets';
+import type { ApiResponse } from '@shared/model';
 import type {
 	PublicQuestion,
 	PublicQuestionParams,
 	PublicQuestionsApiResponse,
 } from '../model/types';
-import type { ApiResponse } from '@shared/model';
-import { logoQuestion, preview } from '@shared/assets';
+
+const cleanParams = (params: Partial<PublicQuestionParams>) => {
+	const result: Record<string, string> = {};
+	Object.entries(params).forEach(([key, value]) => {
+		if (
+			value !== undefined &&
+			value !== null &&
+			(Array.isArray(value) ? value.length > 0 : true)
+		) {
+			result[key] = Array.isArray(value) ? value.join(',') : String(value);
+		}
+	});
+	return result;
+};
+
+const normalizeQuestion = (
+	question: PublicQuestion,
+	defaultImage: string
+): PublicQuestion => ({
+	...question,
+	imageSrc: question.imageSrc || defaultImage,
+	keywords: question.keywords ?? [],
+	questionSkills: question.questionSkills ?? [],
+	questionSpecializations: question.questionSpecializations ?? [],
+});
 
 const questionApi = baseApi.injectEndpoints({
 	endpoints: (builder) => ({
@@ -13,61 +38,19 @@ const questionApi = baseApi.injectEndpoints({
 			PublicQuestionsApiResponse,
 			(PublicQuestionParams & { page?: number }) | void
 		>({
-			query: (params) => {
-				const queryParams: Record<string, string> = {};
-
-				if (params?.page) {
-					queryParams.page = String(params.page);
-				}
-				if (params?.limit) {
-					queryParams.limit = String(params.limit);
-				}
-				if (params?.specialization) {
-					queryParams.specialization = String(params.specialization);
-				}
-				if (params?.skills && params.skills.length > 0) {
-					queryParams.skills = params.skills.join(',');
-				}
-				if (params?.rate && params.rate.length > 0) {
-					queryParams.rate = params.rate.join(',');
-				}
-				if (params?.complexity && params.complexity.length > 0) {
-					queryParams.complexity = params.complexity.join(',');
-				}
-				if (params?.keywords && params.keywords.length > 0) {
-					queryParams.keywords = params.keywords.join(',');
-				}
-
-				return {
-					url: 'questions/public-questions',
-					params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
-				};
-			},
-			transformResponse: (response: ApiResponse<PublicQuestion>) => {
-				const transformedData = {
-					data: response.data.map((question) => ({
-						...question,
-						imageSrc: question.imageSrc || preview,
-						keywords: question.keywords ?? [],
-						questionSkills: question.questionSkills ?? [],
-						questionSpecializations: question.questionSpecializations ?? [],
-					})),
-					page: response.page,
-					total: response.total,
-					limit: response.limit,
-				};
-
-				return transformedData;
-			},
+			query: (params) => ({
+				url: 'questions/public-questions',
+				params: params ? cleanParams(params) : undefined,
+			}),
+			transformResponse: (response: ApiResponse<PublicQuestion>) => ({
+				...response,
+				data: response.data.map((q) => normalizeQuestion(q, preview)),
+			}),
 		}),
 		fetchQuestionById: builder.query<PublicQuestion, string>({
 			query: (id) => `questions/public-questions/${id}`,
-			transformResponse: (question: PublicQuestion) => ({
-				...question,
-				imageSrc: question.imageSrc || logoQuestion,
-				keywords: question.keywords ?? [],
-				questionSkills: question.questionSkills ?? [],
-			}),
+			transformResponse: (question: PublicQuestion) =>
+				normalizeQuestion(question, logoQuestion),
 		}),
 	}),
 });
