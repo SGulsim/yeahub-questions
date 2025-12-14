@@ -1,0 +1,42 @@
+import styles from './QuestionList.module.css';
+
+interface QuestionListSkeletonProps {
+	count?: number;
+}
+
+const QuestionListSkeleton = ({ count = 5 }: QuestionListSkeletonProps) => {
+	return (
+		<div className={styles.wrapper}>
+			<article className={styles.content}>
+				<div className={`${styles.skeletonHeader} skeleton-pulse`}></div>
+
+				<ul className={styles.listSkeleton}>
+					{Array.from({ length: count }, (_, i) => (
+						<li key={i} className={styles.itemSkeleton}>
+							<div className={`${styles.skeletonTitle} skeleton-pulse`}></div>
+
+							<div className={styles.content}>
+								<div className={styles.skeletonMeta}>
+									<div
+										className={`${styles.skeletonMetaItem} skeleton-pulse`}
+									></div>
+									<div
+										className={`${styles.skeletonMetaItem} skeleton-pulse`}
+									></div>
+								</div>
+
+								<div className={`${styles.skeletonImage} skeleton-pulse`}></div>
+
+								<div className={`${styles.skeletonText} skeleton-pulse`}></div>
+
+								<div className={`${styles.skeletonLink} skeleton-pulse`}></div>
+							</div>
+						</li>
+					))}
+				</ul>
+			</article>
+		</div>
+	);
+};
+
+export default QuestionListSkeleton;

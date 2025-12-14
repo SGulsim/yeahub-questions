@@ -7,14 +7,13 @@ import {
 	selectShowAllSpecializations,
 	selectActiveSpecialization,
 } from '../../model/filterSelectors';
-import { FilterBase } from '@shared/ui';
+import { EmptyState, FilterBase, Spinner } from '@shared/ui';
 import {
 	toggleShowAllSpecializations,
 	setSpecialization,
 } from '../../model/filterSlice';
 import { useFetchSpecializationsQuery } from '@entities/specialization/api/specializationApi';
-
-const DEFAULT_SPECIALIZATION_ID = 11;
+import { DEFAULT_SPECIALIZATION_ID } from '../../model/constants';
 
 const SpecializationFilter = () => {
 	const activeSpecialization = useAppSelector(selectActiveSpecialization);
@@ -24,7 +23,7 @@ const SpecializationFilter = () => {
 	const {
 		data: specializations,
 		isLoading,
-		isError,
+		isFetching,
 	} = useFetchSpecializationsQuery();
 
 	useEffect(() => {
@@ -38,8 +37,16 @@ const SpecializationFilter = () => {
 		dispatch(setSpecialization(defaultSpecialization));
 	}, [specializations, activeSpecialization, dispatch]);
 
-	if (isLoading) return <div>Загрузка...</div>;
-	if (isError || !specializations) return <div>Ошибка...</div>;
+	if (isLoading || isFetching) return <Spinner />;
+	if (!specializations || specializations.length === 0)
+		return (
+			<EmptyState
+				title='Специализации не найдены'
+				message='Попробуйте перезагрузить страницу'
+				actionLabel='Перезагрузить'
+				onAction={() => window.location.reload()}
+			/>
+		);
 
 	const items = specializations.map((specialization) => ({
 		id: specialization.id,

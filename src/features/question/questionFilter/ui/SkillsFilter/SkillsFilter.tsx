@@ -3,7 +3,7 @@ import {
 	useAppSelector,
 } from '@app/providers/store/configs/hooks';
 import { useFetchSkillsQuery } from '@entities/skills/api/skillsApi';
-import { FilterBase } from '@shared/ui';
+import { CenteredSpinner, EmptyState, FilterBase, Spinner } from '@shared/ui';
 import {
 	selectShowAllSkills,
 	selectSkillsFilter,
@@ -20,7 +20,7 @@ const SkillsFilter = () => {
 	const {
 		data: skills,
 		isLoading,
-		isError,
+		isFetching,
 	} = useFetchSkillsQuery(
 		{
 			specializationId: activeSpecialization?.id ?? 0,
@@ -30,12 +30,18 @@ const SkillsFilter = () => {
 		}
 	);
 
-	if (!activeSpecialization) {
-		return <div>Загрузка...</div>;
-	}
+	if (!activeSpecialization) return <Spinner />;
+	if (isLoading || isFetching) return <Spinner />;
 
-	if (isLoading) return <div>Загрузка...</div>;
-	if (isError || !skills) return <div>Ошибка...</div>;
+	if (!skills || skills.length === 0)
+		return (
+			<EmptyState
+				title='Навыки не найдены'
+				message='Попробуйте перезагрузить страницу'
+				actionLabel='Перезагрузить'
+				onAction={() => window.location.reload()}
+			/>
+		);
 
 	const items = skills.map((skill) => ({
 		id: skill.id,

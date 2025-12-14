@@ -1,7 +1,7 @@
 import styles from './QuestionSidebar.module.css';
 import { QuestionMeta } from '@entities/question';
 import type { PublicQuestion } from '@entities/question/model/types';
-import { Button } from '@shared/ui/index';
+import { Button } from '@shared/ui';
 interface QuestionSidebarProps {
 	question: PublicQuestion;
 }

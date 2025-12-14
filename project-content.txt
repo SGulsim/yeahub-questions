@@ -1,6 +1,6 @@
 # PROJECT CONTENT COLLECTION
-# Generated: 2025-12-14T08:23:25.432Z
-# Total files: 78
+# Generated: 2025-12-14T09:51:20.982Z
+# Total files: 89
 
 ================================================================================
 
@@ -366,13 +366,16 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from '@app/providers/router/configs/routerConfig';
 import { Provider } from 'react-redux';
 import { store } from './providers/store/configs/store';
+import ErrorBoundary from '@widgets/error/ui/ErrorBoundary/ErrorBoundary';
 
 createRoot(document.getElementById('root')!).render(
-	
-	<Provider store={store}>
-		<RouterProvider router={router} />
-	</Provider>
-	
+	<StrictMode>
+		<ErrorBoundary>
+			<Provider store={store}>
+				<RouterProvider router={router} />
+			</Provider>
+		</ErrorBoundary>
+	</StrictMode>
 );
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -416,12 +419,14 @@ FILE: src\app\providers\router\configs\routerConfig.tsx
 import BaseLayout from '@app/layouts/main/ui/BaseLayout';
 import QuestionDetailPage from '@pages/questionDetail';
 import QuestionMainPage from '@pages/questionMain';
+import ErrorFallback from '@widgets/error/ui/ErrorFallback/ErrorFallback';
 import { createBrowserRouter } from 'react-router-dom';
 
 export const router = createBrowserRouter([
 	{
 		path: '/',
 		element: <BaseLayout />,
+		errorElement: <ErrorFallback />,
 		children: [
 			{ index: true, element: <QuestionMainPage /> },
 			{ path: '/detail/:questionId', element: <QuestionDetailPage /> },
@@ -533,6 +538,7 @@ FILE: src\app\styles\index.css
 	--gap-40: 40px;
 	--gap-24: 24px;
 	--gap-20: 24px;
+	--gap-16: 16px;
 	--gap-12: 12px;
 	--gap-10: 10px;
 	--gap-8: 8px;
@@ -676,6 +682,21 @@ h5 {
 	font-weight: var(--fw-med);
 }
 
+.skeleton-pulse {
+	background: linear-gradient(-90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
+	background-size: 400% 400%;
+	animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+	0% {
+		background-position: 0% 0%;
+	}
+	100% {
+		background-position: -135% 0%;
+	}
+}
+
 ────────────────────────────────────────────────────────────────────────────────
 
 FILE: src\app\styles\normalize.css
@@ -726,7 +747,6 @@ const questionApi = baseApi.injectEndpoints({
 				if (params?.keywords && params.keywords.length > 0) {
 					queryParams.keywords = params.keywords.join(',');
 				}
-				console.log(Object.keys(queryParams), queryParams);
 
 				return {
 					url: 'questions/public-questions',
@@ -1033,7 +1053,6 @@ export default specializationApi;
 FILE: src\entities\specialization\index.ts
 ────────────────────────────────────────────────────────────────────────────────
 
-export { useSpecializations } from './lib/hooks/useSpecializations';
 export type { Specialization, SpecializationApiResponse } from './model/types';
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -1100,6 +1119,8 @@ export const ratingButtons = [
 	{ id: 4, title: '4', value: [4] },
 	{ id: 5, title: '5', value: [5] },
 ];
+
+export const DEFAULT_SPECIALIZATION_ID = 11;
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -1198,12 +1219,16 @@ const questionFilterSlice = createSlice({
 			state.rate = action.payload;
 		},
 
-		setSearch(state, action: PayloadAction<string[]>) {
-			state.keywords = action.payload;
+		setSearch(state, action: PayloadAction<string>) {
+			const trimmed = action.payload.trim();
+			state.keywords = trimmed ? [trimmed] : [];
 		},
 
-		resetFilters() {
-			return initialState;
+		resetFilters(state) {
+			return {
+				...initialState,
+				specializations: state.specializations,
+			};
 		},
 	},
 });
@@ -1252,10 +1277,10 @@ import {
 import { setComplexity } from '../../model/filterSlice';
 
 const ComplexityFilter = () => {
+	const dispatch = useAppDispatch();
 	const activeComplexity = useAppSelector(
 		(state) => state.questionFilters.complexity
 	);
-	const dispatch = useAppDispatch();
 
 	const items = difficultyButtons.map((btn) => {
 		const isActive =
@@ -1306,8 +1331,8 @@ import {
 import { setRating } from '../../model/filterSlice';
 
 const RatingFilter = () => {
-	const activeRate = useAppSelector((state) => state.questionFilters.rate);
 	const dispatch = useAppDispatch();
+	const activeRate = useAppSelector((state) => state.questionFilters.rate);
 
 	const items = ratingButtons.map((rate) => {
 		const isActive =
@@ -1399,7 +1424,7 @@ const SearchInput = () => {
 	const dispatch = useAppDispatch();
 
 	useEffect(() => {
-		dispatch(setSearch([debouncedValue.trim()]));
+		dispatch(setSearch(debouncedValue));
 	}, [debouncedValue]);
 
 	return (
@@ -1428,7 +1453,7 @@ import {
 	useAppSelector,
 } from '@app/providers/store/configs/hooks';
 import { useFetchSkillsQuery } from '@entities/skills/api/skillsApi';
-import { FilterBase } from '@shared/ui';
+import { CenteredSpinner, EmptyState, FilterBase, Spinner } from '@shared/ui';
 import {
 	selectShowAllSkills,
 	selectSkillsFilter,
@@ -1445,7 +1470,7 @@ const SkillsFilter = () => {
 	const {
 		data: skills,
 		isLoading,
-		isError,
+		isFetching,
 	} = useFetchSkillsQuery(
 		{
 			specializationId: activeSpecialization?.id ?? 0,
@@ -1455,12 +1480,18 @@ const SkillsFilter = () => {
 		}
 	);
 
-	if (!activeSpecialization) {
-		return <div>Загрузка...</div>;
-	}
+	if (!activeSpecialization) return <Spinner />;
+	if (isLoading || isFetching) return <Spinner />;
 
-	if (isLoading) return <div>Загрузка...</div>;
-	if (isError || !skills) return <div>Ошибка...</div>;
+	if (!skills || skills.length === 0)
+		return (
+			<EmptyState
+				title='Навыки не найдены'
+				message='Попробуйте перезагрузить страницу'
+				actionLabel='Перезагрузить'
+				onAction={() => window.location.reload()}
+			/>
+		);
 
 	const items = skills.map((skill) => ({
 		id: skill.id,
@@ -1501,14 +1532,13 @@ import {
 	selectShowAllSpecializations,
 	selectActiveSpecialization,
 } from '../../model/filterSelectors';
-import { FilterBase } from '@shared/ui';
+import { EmptyState, FilterBase, Spinner } from '@shared/ui';
 import {
 	toggleShowAllSpecializations,
 	setSpecialization,
 } from '../../model/filterSlice';
 import { useFetchSpecializationsQuery } from '@entities/specialization/api/specializationApi';
-
-const DEFAULT_SPECIALIZATION_ID = 11;
+import { DEFAULT_SPECIALIZATION_ID } from '../../model/constants';
 
 const SpecializationFilter = () => {
 	const activeSpecialization = useAppSelector(selectActiveSpecialization);
@@ -1518,7 +1548,7 @@ const SpecializationFilter = () => {
 	const {
 		data: specializations,
 		isLoading,
-		isError,
+		isFetching,
 	} = useFetchSpecializationsQuery();
 
 	useEffect(() => {
@@ -1532,8 +1562,16 @@ const SpecializationFilter = () => {
 		dispatch(setSpecialization(defaultSpecialization));
 	}, [specializations, activeSpecialization, dispatch]);
 
-	if (isLoading) return <div>Загрузка...</div>;
-	if (isError || !specializations) return <div>Ошибка...</div>;
+	if (isLoading || isFetching) return <Spinner />;
+	if (!specializations || specializations.length === 0)
+		return (
+			<EmptyState
+				title='Специализации не найдены'
+				message='Попробуйте перезагрузить страницу'
+				actionLabel='Перезагрузить'
+				onAction={() => window.location.reload()}
+			/>
+		);
 
 	const items = specializations.map((specialization) => ({
 		id: specialization.id,
@@ -1596,17 +1634,13 @@ import { Link, useParams } from 'react-router-dom';
 import { Image } from '@shared/ui';
 import { arrowLeft } from '@shared/assets';
 import QuestionDetail from '@widgets/question/ui/QuestionDetail/QuestionDetail';
+import QuestionDetailSkeleton from '@widgets/question/ui/QuestionDetail/QuestionDetailSkeleton';
 
 const QuestionDetailPage = () => {
 	const { questionId } = useParams<{ questionId: string }>();
-	const {
-		data: question,
-		isLoading,
-		isError,
-	} = useFetchQuestionByIdQuery(questionId!);
+	const { data: question, isLoading } = useFetchQuestionByIdQuery(questionId!);
 
-	if (isLoading) return <div>Загрузка...</div>;
-	if (isError || !question) return <div>Ошибка...</div>;
+	if (isLoading) return <QuestionDetailSkeleton />;
 
 	return (
 		<main className={styles.content}>
@@ -1614,7 +1648,7 @@ const QuestionDetailPage = () => {
 				<Image src={arrowLeft} alt={'arrowLeft'} />
 				<span className={styles.back}>Назад</span>
 			</Link>
-			<QuestionDetail question={question} />
+			<QuestionDetail question={question!} />
 		</main>
 	);
 };
@@ -1644,14 +1678,33 @@ FILE: src\pages\questionMain\ui\QuestionMainPage.module.css
 FILE: src\pages\questionMain\ui\QuestionMainPage.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
-import { QuestionFilters, QuestionList } from '@widgets/question';
+import {
+	QuestionFiltersSkeleton,
+	QuestionListSkeleton,
+} from '@widgets/question';
 import styles from './QuestionMainPage.module.css';
+import { Suspense, lazy } from 'react';
+
+const LazyQuestionList = lazy(() =>
+	import('@widgets/question').then((module) => ({
+		default: module.QuestionList,
+	}))
+);
+const LazyQuestionFilters = lazy(() =>
+	import('@widgets/question').then((module) => ({
+		default: module.QuestionFilters,
+	}))
+);
 
 const QuestionMainPage = () => {
 	return (
 		<main className={styles.content}>
-			<QuestionList />
-			<QuestionFilters />
+			<Suspense fallback={<QuestionListSkeleton />}>
+				<LazyQuestionList />
+			</Suspense>
+			<Suspense fallback={<QuestionFiltersSkeleton />}>
+				<LazyQuestionFilters />
+			</Suspense>
 		</main>
 	);
 };
@@ -1926,6 +1979,83 @@ export default Button;
 
 ────────────────────────────────────────────────────────────────────────────────
 
+FILE: src\shared\ui\EmptyState\EmptyState.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.emptyState {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--gap-16);
+	padding: var(--pd-40) var(--pd-24);
+	text-align: center;
+}
+
+.icon {
+	width: 64px;
+	height: 64px;
+	margin-bottom: var(--mb-16);
+	opacity: 0.6;
+}
+
+.title {
+	color: var(--color-black-800);
+	font-weight: var(--fw-sb);
+}
+
+.message {
+	color: var(--color-black-600);
+	max-width: 400px;
+	line-height: var(--lh-130);
+}
+
+.button {
+	margin-top: var(--mb-16);
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\EmptyState\EmptyState.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './EmptyState.module.css';
+import { Button, Image } from '@shared/ui';
+import { search } from '@shared/assets';
+
+interface EmptyStateProps {
+	title?: string;
+	message?: string;
+	actionLabel?: string;
+	onAction?: () => void;
+	icon?: string;
+}
+
+const EmptyState = ({
+	title = 'Ничего не найдено',
+	message = 'Попробуйте изменить параметры поиска',
+	actionLabel = 'Сбросить фильтры',
+	onAction,
+	icon = search,
+}: EmptyStateProps) => {
+	return (
+		<div className={styles.emptyState} role='status'>
+			{icon && <Image src={icon} alt='icon' className={styles.icon} />}
+			<h4 className={styles.title}>{title}</h4>
+			<p className={styles.message}>{message}</p>
+			{onAction && (
+				<Button type='primary' size='M' state='default' onClick={onAction}>
+					{actionLabel}
+				</Button>
+			)}
+		</div>
+	);
+};
+
+export default EmptyState;
+
+────────────────────────────────────────────────────────────────────────────────
+
 FILE: src\shared\ui\FilterBase\FilterBase.module.css
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -2033,10 +2163,11 @@ import styles from './Image.module.css';
 interface ImageProps {
 	src?: string;
 	alt?: string;
+	className?: string;
 }
 
-const Image = ({ src, alt }: ImageProps) => {
-	return <img src={src} alt={alt} className={styles.image} />;
+const Image = ({ src, alt, className }: ImageProps) => {
+	return <img src={src} alt={alt} className={`${styles.image} ${className}`} />;
 };
 
 export default Image;
@@ -2051,6 +2182,9 @@ export { default as Image } from './Image/Image';
 export { default as Logo } from './Logo/Logo';
 export { default as FilterBase } from './FilterBase/FilterBase';
 export { default as Article } from './Article/Article';
+export { default as Spinner } from './Spinner/Spinner';
+export { default as CenteredSpinner } from './Spinner/CenteredSpinner';
+export { default as EmptyState } from './EmptyState/EmptyState';
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -2065,6 +2199,354 @@ const Logo = () => {
 };
 
 export default Logo;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\Spinner\CenteredSpinner.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './Spinner.module.css';
+import Spinner from './Spinner';
+
+interface CenteredSpinnerProps extends React.ComponentProps<typeof Spinner> {
+	message?: string;
+	fullPage?: boolean;
+}
+
+const CenteredSpinner = ({
+	message = 'Загрузка...',
+	fullPage = false,
+	...spinnerProps
+}: CenteredSpinnerProps) => {
+	return (
+		<div
+			className={`${styles.centered} ${fullPage ? styles.fullPage : ''}`}
+			role='status'
+		>
+			<div className={styles.centeredContent}>
+				<Spinner {...spinnerProps} />
+				{message && (
+					<span className={`${styles.message} text-16-med`}>{message}</span>
+				)}
+			</div>
+		</div>
+	);
+};
+
+export default CenteredSpinner;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\Spinner\Spinner.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.spinner {
+	display: inline-block;
+	position: relative;
+}
+
+.spinner div {
+	box-sizing: border-box;
+	display: block;
+	position: absolute;
+	border-radius: 50%;
+	animation: spinner 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+	border: 2px solid;
+}
+
+.spinner div:nth-child(1) {
+	animation-delay: -0.45s;
+}
+
+.spinner div:nth-child(2) {
+	animation-delay: -0.3s;
+}
+
+.spinner div:nth-child(3) {
+	animation-delay: -0.15s;
+}
+
+.sm {
+	width: 16px;
+	height: 16px;
+}
+
+.md {
+	width: 24px;
+	height: 24px;
+}
+
+.lg {
+	width: 40px;
+	height: 40px;
+}
+
+.sm div {
+	width: 16px;
+	height: 16px;
+	border-width: 2px;
+}
+
+.md div {
+	width: 24px;
+	height: 24px;
+	border-width: 3px;
+}
+
+.lg div {
+	width: 40px;
+	height: 40px;
+	border-width: 4px;
+}
+
+.primary div {
+	border-color: var(--color-purple-700) transparent transparent transparent;
+}
+
+.white div {
+	border-color: var(--color-white) transparent transparent transparent;
+}
+
+.black div {
+	border-color: var(--color-black-800) transparent transparent transparent;
+}
+
+@keyframes spinner {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+.centered {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 200px;
+	width: 100%;
+}
+
+.fullPage {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(255, 255, 255, 0.9);
+	z-index: 1000;
+}
+
+.centeredContent {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--gap-12);
+}
+
+.message {
+	color: var(--color-black-700);
+	margin-top: var(--mb-8);
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\Spinner\Spinner.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './Spinner.module.css';
+
+interface SpinnerProps {
+	size?: 'sm' | 'md' | 'lg';
+	color?: 'primary' | 'white' | 'black';
+}
+
+const Spinner = ({ size = 'md', color = 'primary' }: SpinnerProps) => {
+	return (
+		<div
+			className={`
+        ${styles.spinner} 
+        ${styles[size]} 
+        ${styles[color]}
+      `}
+			role='status'
+			aria-label='Загрузка'
+		>
+			Загрузка...
+		</div>
+	);
+};
+
+export default Spinner;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\error\ui\ErrorBoundary\ErrorBoundary.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import React from 'react';
+import ErrorFallback from '../ErrorFallback/ErrorFallback';
+
+interface ErrorBoundaryState {
+	hasError: boolean;
+	error?: Error;
+}
+
+class ErrorBoundary extends React.Component<
+	React.PropsWithChildren<{
+		fallback?: React.ComponentType<{ error?: Error }>;
+	}>,
+	ErrorBoundaryState
+> {
+	constructor(props: any) {
+		super(props);
+		this.state = { hasError: false };
+	}
+
+	static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+		return { hasError: true, error };
+	}
+
+	componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+		console.error('ErrorBoundary caught an error:', error, errorInfo);
+	}
+
+	resetError = () => {
+		this.setState({ hasError: false, error: undefined });
+	};
+
+	render() {
+		if (this.state.hasError) {
+			const FallbackComponent = this.props.fallback || ErrorFallback;
+			return (
+				<FallbackComponent
+					error={this.state.error}
+					resetError={this.resetError}
+				/>
+			);
+		}
+
+		return this.props.children;
+	}
+}
+
+export default ErrorBoundary;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\error\ui\ErrorFallback\ErrorFallback.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.container {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 100vh;
+}
+
+.content {
+	text-align: center;
+	max-width: 500px;
+}
+
+.title {
+	color: var(--color-black-800);
+	margin-bottom: var(--mb-40);
+}
+
+.message {
+	color: var(--color-black-800);
+	margin-bottom: var(--mb-40);
+}
+
+.details {
+	color: var(--color-black-800);
+	text-align: left;
+}
+
+.details.summary {
+	cursor: pointer;
+	margin-bottom: var(--mb-40);
+}
+
+.error {
+	background: rgba(var(--color-purple-700), 0.05);
+	padding: var(--pd-12);
+	border-radius: var(--border-radius-12);
+	font-size: var(--fs-16);
+	color: var(--color-white);
+	overflow-x: auto;
+	white-space: pre-wrap;
+}
+
+.actions {
+	display: flex;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: var(--gap-8);
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\error\ui\ErrorFallback\ErrorFallback.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './ErrorFallback.module.css';
+import { Button } from '@shared/ui';
+import { useNavigate } from 'react-router-dom';
+
+interface ErrorFallbackProps {
+	error?: Error;
+	resetError?: () => void;
+}
+
+const ErrorFallback = ({ error, resetError }: ErrorFallbackProps) => {
+	const navigate = useNavigate();
+
+	const handleGoHome = () => {
+		navigate('/');
+		resetError?.();
+	};
+
+	const handleReload = () => {
+		window.location.reload();
+	};
+
+	return (
+		<div className={styles.container}>
+			<div className={styles.content}>
+				<h1 className={styles.title}>Что-то пошло не так</h1>
+				<p className={`${styles.message} text-20-reg`}>
+					Произошла непредвиденная ошибка. Пожалуйста, попробуйте еще раз.
+				</p>
+
+				{error && (
+					<details className={styles.details}>
+						<summary>Подробности ошибки</summary>
+						<pre className={styles.error}>{error.message}</pre>
+					</details>
+				)}
+
+				<div className={styles.actions}>
+					<Button
+						type='primary'
+						size='M'
+						state='default'
+						onClick={handleReload}
+					>
+						Перезагрузить
+					</Button>
+					<Button type='link' size='M' state='default' onClick={handleGoHome}>
+						На главную
+					</Button>
+				</div>
+			</div>
+		</div>
+	);
+};
+
+export default ErrorFallback;
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -2158,6 +2640,10 @@ export { default as QuestionList } from './ui/QuestionList/QuestionList';
 export { default as QuestionSidebar } from './ui/QuestionSidebar/QuestionSidebar';
 export { default as QuestionDetail } from './ui/QuestionDetail/QuestionDetail';
 
+export { default as QuestionListSkeleton } from './ui/QuestionList/QuestionListSkeleton';
+export { default as QuestionFiltersSkeleton } from './ui/QuestionFilters/QuestionFiltersSkeleton';
+export { default as QuestionDetailSkeleton } from './ui/QuestionDetail/QuestionDetailSkeleton';
+
 ────────────────────────────────────────────────────────────────────────────────
 
 FILE: src\widgets\question\ui\QuestionDetail\QuestionDetail.module.css
@@ -2166,6 +2652,121 @@ FILE: src\widgets\question\ui\QuestionDetail\QuestionDetail.module.css
 .details {
 	display: flex;
 	gap: var(--gap-20);
+}
+
+
+.skeletonBackLink {
+	width: 100px;
+	height: 20px;
+	margin-bottom: var(--mb-40);
+	border-radius: var(--border-radius-8);
+}
+
+.skeletonMainContent {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-20);
+}
+
+.skeletonBrief {
+	display: flex;
+	gap: var(--gap-20);
+	padding: var(--pd-24);
+	border-radius: var(--border-radius-24);
+	background-color: var(--color-white);
+}
+
+.skeletonImage {
+	width: 120px;
+	height: 120px;
+	border-radius: var(--border-radius-12);
+}
+
+.skeletonBriefContent {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-12);
+}
+
+.skeletonBriefTitle {
+	width: 70%;
+	height: 28px;
+	border-radius: var(--border-radius-8);
+}
+
+.skeletonBriefText {
+	width: 100%;
+	height: 40px;
+	border-radius: var(--border-radius-8);
+}
+
+.skeletonArticle {
+	padding: var(--pd-24);
+	border-radius: var(--border-radius-24);
+	background-color: var(--color-white);
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-16);
+}
+
+.skeletonArticleTitle {
+	width: 60%;
+	height: 24px;
+	border-radius: var(--border-radius-8);
+}
+
+.skeletonArticleText {
+	width: 100%;
+	height: 80px;
+	border-radius: var(--border-radius-8);
+}
+
+.skeletonSidebar {
+	width: 300px;
+	padding: var(--pd-24);
+	border-radius: var(--border-radius-24);
+	background-color: var(--color-white);
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-16);
+}
+
+.skeletonSidebarTitle {
+	width: 80px;
+	height: 20px;
+	border-radius: var(--border-radius-4);
+}
+
+.skeletonSidebarMeta {
+	display: flex;
+	gap: var(--gap-40);
+	margin-bottom: var(--mb-24);
+}
+
+.skeletonSidebarMetaItem {
+	width: 120px;
+	height: 32px;
+	border-radius: var(--border-radius-8);
+}
+
+.skeletonTags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--gap-8);
+}
+
+.skeletonTag {
+	width: 80px;
+	height: 36px;
+	border-radius: var(--border-radius-12);
+}
+
+.skeletonKeyword {
+	width: 60px;
+	height: 20px;
+	border-radius: var(--border-radius-4);
 }
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -2195,6 +2796,98 @@ export default QuestionDetail;
 
 ────────────────────────────────────────────────────────────────────────────────
 
+FILE: src\widgets\question\ui\QuestionDetail\QuestionDetailSkeleton.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './QuestionDetail.module.css';
+
+const QuestionDetailSkeleton = () => {
+	return (
+		<main className={styles.content}>
+			<div className={`${styles.skeletonBackLink} skeleton-pulse`}></div>
+
+			<section className={styles.details}>
+				<div className={styles.skeletonMainContent}>
+					<div className={styles.skeletonBrief}>
+						<div className={`${styles.skeletonImage} skeleton-pulse`}></div>
+						<div className={styles.skeletonBriefContent}>
+							<div
+								className={`${styles.skeletonBriefTitle} skeleton-pulse`}
+							></div>
+							<div
+								className={`${styles.skeletonBriefText} skeleton-pulse`}
+							></div>
+						</div>
+					</div>
+
+					<div className={styles.skeletonArticle}>
+						<div
+							className={`${styles.skeletonArticleTitle} skeleton-pulse`}
+						></div>
+						<div
+							className={`${styles.skeletonArticleText} skeleton-pulse`}
+						></div>
+					</div>
+
+					<div className={styles.skeletonArticle}>
+						<div
+							className={`${styles.skeletonArticleTitle} skeleton-pulse`}
+						></div>
+						<div
+							className={`${styles.skeletonArticleText} skeleton-pulse`}
+						></div>
+						<div
+							className={`${styles.skeletonArticleText} skeleton-pulse`}
+						></div>
+					</div>
+				</div>
+
+				<div className={styles.skeletonSidebar}>
+					<div
+						className={`${styles.skeletonSidebarTitle} skeleton-pulse`}
+					></div>
+					<div className={styles.skeletonSidebarMeta}>
+						<div
+							className={`${styles.skeletonSidebarMetaItem} skeleton-pulse`}
+						></div>
+						<div
+							className={`${styles.skeletonSidebarMetaItem} skeleton-pulse`}
+						></div>
+					</div>
+
+					<div
+						className={`${styles.skeletonSidebarTitle} skeleton-pulse`}
+					></div>
+					<div className={styles.skeletonTags}>
+						{[...Array(4)].map((_, i) => (
+							<div
+								key={i}
+								className={`${styles.skeletonTag} skeleton-pulse`}
+							></div>
+						))}
+					</div>
+
+					<div
+						className={`${styles.skeletonSidebarTitle} skeleton-pulse`}
+					></div>
+					<div className={styles.skeletonTags}>
+						{[...Array(6)].map((_, i) => (
+							<div
+								key={i}
+								className={`${styles.skeletonKeyword} skeleton-pulse`}
+							></div>
+						))}
+					</div>
+				</div>
+			</section>
+		</main>
+	);
+};
+
+export default QuestionDetailSkeleton;
+
+────────────────────────────────────────────────────────────────────────────────
+
 FILE: src\widgets\question\ui\QuestionFilters\QuestionFilters.module.css
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -2206,6 +2899,49 @@ FILE: src\widgets\question\ui\QuestionFilters\QuestionFilters.module.css
 	background-color: var(--color-white);
 	border-radius: var(--border-radius-24);
 	height: fit-content;
+}
+
+
+.skeletonSearch {
+	width: 100%;
+	height: 48px;
+	border-radius: var(--border-radius-68);
+}
+
+.skeletonFilter {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap-12);
+}
+
+.skeletonFilterTitle {
+	width: 120px;
+	height: 20px;
+	border-radius: var(--border-radius-4);
+}
+
+.skeletonFilterItems {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--gap-8);
+}
+
+.skeletonFilterItem {
+	width: 80px;
+	height: 36px;
+	border-radius: var(--border-radius-12);
+}
+
+.skeletonFilterItemLarge {
+	width: 120px;
+	height: 36px;
+	border-radius: var(--border-radius-12);
+}
+
+.skeletonShowAll {
+	width: 80px;
+	height: 20px;
+	border-radius: var(--border-radius-4);
 }
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -2235,6 +2971,73 @@ const QuestionFilters = () => {
 };
 
 export default QuestionFilters;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\question\ui\QuestionFilters\QuestionFiltersSkeleton.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './QuestionFilters.module.css';
+
+const QuestionFiltersSkeleton = () => {
+	return (
+		<aside className={styles.filters}>
+			<div className={`${styles.skeletonSearch} skeleton-pulse`}></div>
+
+			<div className={styles.skeletonFilter}>
+				<div className={`${styles.skeletonFilterTitle} skeleton-pulse`}></div>
+				<div className={styles.skeletonFilterItems}>
+					{[...Array(4)].map((_, i) => (
+						<div
+							key={i}
+							className={`${styles.skeletonFilterItemLarge} skeleton-pulse`}
+						></div>
+					))}
+				</div>
+				<div className={`${styles.skeletonShowAll} skeleton-pulse`}></div>
+			</div>
+
+			<div className={styles.skeletonFilter}>
+				<div className={`${styles.skeletonFilterTitle} skeleton-pulse`}></div>
+				<div className={styles.skeletonFilterItems}>
+					{[...Array(6)].map((_, i) => (
+						<div
+							key={i}
+							className={`${styles.skeletonFilterItem} skeleton-pulse`}
+						></div>
+					))}
+				</div>
+				<div className={`${styles.skeletonShowAll} skeleton-pulse`}></div>
+			</div>
+
+			<div className={styles.skeletonFilter}>
+				<div className={`${styles.skeletonFilterTitle} skeleton-pulse`}></div>
+				<div className={styles.skeletonFilterItems}>
+					{[...Array(4)].map((_, i) => (
+						<div
+							key={i}
+							className={`${styles.skeletonFilterItem} skeleton-pulse`}
+						></div>
+					))}
+				</div>
+			</div>
+
+			<div className={styles.skeletonFilter}>
+				<div className={`${styles.skeletonFilterTitle} skeleton-pulse`}></div>
+				<div className={styles.skeletonFilterItems}>
+					{[...Array(5)].map((_, i) => (
+						<div
+							key={i}
+							className={`${styles.skeletonFilterItem} skeleton-pulse`}
+						></div>
+					))}
+				</div>
+			</div>
+		</aside>
+	);
+};
+
+export default QuestionFiltersSkeleton;
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -2315,7 +3118,8 @@ FILE: src\widgets\question\ui\QuestionList\QuestionList.module.css
 	border-bottom: 1px solid var(--color-black-50);
 }
 
-.list {
+.list,
+.listSkeleton {
 	display: flex;
 	flex-direction: column;
 	gap: var(--gap-24);
@@ -2323,7 +3127,8 @@ FILE: src\widgets\question\ui\QuestionList\QuestionList.module.css
 	padding-left: 0;
 }
 
-.list li {
+.list li,
+.itemSkeleton {
 	position: relative;
 	padding-left: var(--pd-24);
 }
@@ -2340,6 +3145,54 @@ FILE: src\widgets\question\ui\QuestionList\QuestionList.module.css
 	display: flex;
 }
 
+
+.skeletonHeader {
+	width: 200px;
+	height: 32px;
+	margin-bottom: var(--mb-40);
+	border-radius: var(--border-radius-8);
+}
+
+.skeletonTitle {
+	width: 80%;
+	height: 24px;
+	margin-bottom: var(--mb-24);
+	border-radius: var(--border-radius-8);
+}
+
+.skeletonMeta {
+	display: flex;
+	gap: var(--gap-40);
+	margin-bottom: var(--mb-24);
+}
+
+.skeletonMetaItem {
+	width: 120px;
+	height: 32px;
+	border-radius: var(--border-radius-8);
+}
+
+.skeletonImage {
+	width: 100%;
+	height: 200px;
+	margin-bottom: var(--mb-24);
+	border-radius: var(--border-radius-12);
+}
+
+.skeletonText {
+	width: 100%;
+	height: 60px;
+	margin-bottom: var(--mb-16);
+	border-radius: var(--border-radius-8);
+}
+
+.skeletonLink {
+	width: 120px;
+	height: 20px;
+	margin-left: auto;
+	border-radius: var(--border-radius-8);
+}
+
 ────────────────────────────────────────────────────────────────────────────────
 
 FILE: src\widgets\question\ui\QuestionList\QuestionList.tsx
@@ -2348,13 +3201,20 @@ FILE: src\widgets\question\ui\QuestionList\QuestionList.tsx
 import styles from './QuestionList.module.css';
 import { QuestionItem } from '@entities/question';
 import { useFetchQuestionsQuery } from '@entities/question/api/questionApi';
-import { useAppSelector } from '@app/providers/store/configs/hooks';
+import {
+	useAppDispatch,
+	useAppSelector,
+} from '@app/providers/store/configs/hooks';
 import {
 	selectActiveSpecialization,
 	selectQuestionFilters,
 } from '@features/question/questionFilter';
+import { CenteredSpinner, EmptyState } from '@shared/ui';
+import { resetFilters } from '@features/question/questionFilter/model/filterSlice';
+import QuestionListSkeleton from './QuestionListSkeleton';
 
 const QuestionList = () => {
+	const dispatch = useAppDispatch();
 	const { skills, rate, complexity, keywords } = useAppSelector(
 		selectQuestionFilters
 	);
@@ -2370,20 +3230,24 @@ const QuestionList = () => {
 		  }
 		: undefined;
 
-	const {
-		data: questions,
-		isLoading,
-		isError,
-	} = useFetchQuestionsQuery(queryArgs);
+	const { data: questions, isLoading } = useFetchQuestionsQuery(queryArgs);
 
-	if (isLoading) return <div>Загрузка...</div>;
-	if (isError || !questions) return <div>Ошибка...</div>;
-	console.log(questions);
+	if (isLoading) return <QuestionListSkeleton count={questions?.length || 0} />;
+
+	if (!questions || questions.length === 0)
+		return (
+			<EmptyState
+				title='Вопросы не найдены'
+				message='Попробуйте изменить параметры фильтрации или выбрать другую специализацию'
+				actionLabel='Сбросить фильтры'
+				onAction={() => dispatch(resetFilters())}
+			/>
+		);
 
 	return (
 		<div className={styles.wrapper}>
 			<article className={styles.content}>
-				<h3 className={styles.text}>Вопросы {activeSpecialization.title}</h3>
+				<h3 className={styles.text}>Вопросы {activeSpecialization?.title}</h3>
 				<ul className={styles.list}>
 					{questions.map((question) => (
 						<QuestionItem key={question.id} question={question} />
@@ -2395,6 +3259,54 @@ const QuestionList = () => {
 };
 
 export default QuestionList;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\widgets\question\ui\QuestionList\QuestionListSkeleton.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './QuestionList.module.css';
+
+interface QuestionListSkeletonProps {
+	count?: number;
+}
+
+const QuestionListSkeleton = ({ count = 5 }: QuestionListSkeletonProps) => {
+	return (
+		<div className={styles.wrapper}>
+			<article className={styles.content}>
+				<div className={`${styles.skeletonHeader} skeleton-pulse`}></div>
+
+				<ul className={styles.listSkeleton}>
+					{Array.from({ length: count }, (_, i) => (
+						<li key={i} className={styles.itemSkeleton}>
+							<div className={`${styles.skeletonTitle} skeleton-pulse`}></div>
+
+							<div className={styles.content}>
+								<div className={styles.skeletonMeta}>
+									<div
+										className={`${styles.skeletonMetaItem} skeleton-pulse`}
+									></div>
+									<div
+										className={`${styles.skeletonMetaItem} skeleton-pulse`}
+									></div>
+								</div>
+
+								<div className={`${styles.skeletonImage} skeleton-pulse`}></div>
+
+								<div className={`${styles.skeletonText} skeleton-pulse`}></div>
+
+								<div className={`${styles.skeletonLink} skeleton-pulse`}></div>
+							</div>
+						</li>
+					))}
+				</ul>
+			</article>
+		</div>
+	);
+};
+
+export default QuestionListSkeleton;
 
 ────────────────────────────────────────────────────────────────────────────────
 
