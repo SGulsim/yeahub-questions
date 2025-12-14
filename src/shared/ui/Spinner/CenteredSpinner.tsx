@@ -1,6 +1,5 @@
 import styles from './Spinner.module.css';
 import Spinner from './Spinner';
-
 interface CenteredSpinnerProps extends React.ComponentProps<typeof Spinner> {
 	message?: string;
 	fullPage?: boolean;

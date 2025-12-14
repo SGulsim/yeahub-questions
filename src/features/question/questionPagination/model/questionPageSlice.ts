@@ -1,6 +1,13 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, isAnyOf } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-
+import {
+	selectSkill,
+	setSpecialization,
+	setComplexity,
+	setRating,
+	setSearch,
+	resetFilters,
+} from '@features/question/questionFilter/model/filterSlice';
 export interface QuestionsPageState {
 	page: number;
 }
@@ -19,6 +26,21 @@ const questionsPageSlice = createSlice({
 		resetPage: (state) => {
 			state.page = 1;
 		},
+	},
+	extraReducers: (builder) => {
+		builder.addMatcher(
+			isAnyOf(
+				selectSkill,
+				setSpecialization,
+				setComplexity,
+				setRating,
+				setSearch,
+				resetFilters
+			),
+			(state) => {
+				state.page = 1;
+			}
+		);
 	},
 });
 

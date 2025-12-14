@@ -1,5 +1,4 @@
 import styles from './Spinner.module.css';
-
 interface SpinnerProps {
 	size?: 'sm' | 'md' | 'lg';
 	color?: 'primary' | 'white' | 'black';

@@ -1,6 +1,6 @@
 # PROJECT CONTENT COLLECTION
-# Generated: 2025-12-14T09:51:20.982Z
-# Total files: 89
+# Generated: 2025-12-14T15:27:44.827Z
+# Total files: 106
 
 ================================================================================
 
@@ -360,13 +360,13 @@ FILE: src\app\appEntry.tsx
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Provider } from 'react-redux';
+import { RouterProvider } from 'react-router-dom';
 import './styles/normalize.css';
 import './styles/index.css';
-import { RouterProvider } from 'react-router-dom';
-import { router } from '@app/providers/router/configs/routerConfig';
-import { Provider } from 'react-redux';
-import { store } from './providers/store/configs/store';
-import ErrorBoundary from '@widgets/error/ui/ErrorBoundary/ErrorBoundary';
+import { ErrorBoundary } from '@widgets/error';
+import { store } from './providers/store';
+import { router } from './providers/router';
 
 createRoot(document.getElementById('root')!).render(
 	<StrictMode>
@@ -417,9 +417,10 @@ FILE: src\app\providers\router\configs\routerConfig.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
 import BaseLayout from '@app/layouts/main/ui/BaseLayout';
-import QuestionDetailPage from '@pages/questionDetail';
-import QuestionMainPage from '@pages/questionMain';
-import ErrorFallback from '@widgets/error/ui/ErrorFallback/ErrorFallback';
+import { NotFoundPage } from '@pages/NotFoundPage';
+import { QuestionDetailPage } from '@pages/questionDetail';
+import { QuestionMainPage } from '@pages/questionMain';
+import { ErrorFallback } from '@widgets/error';
 import { createBrowserRouter } from 'react-router-dom';
 
 export const router = createBrowserRouter([
@@ -432,7 +433,18 @@ export const router = createBrowserRouter([
 			{ path: '/detail/:questionId', element: <QuestionDetailPage /> },
 		],
 	},
+	{
+		path: '*',
+		element: <NotFoundPage />,
+	},
 ]);
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\app\providers\router\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export { router } from './configs/routerConfig';
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -452,12 +464,14 @@ FILE: src\app\providers\store\configs\rootReducer.ts
 ────────────────────────────────────────────────────────────────────────────────
 
 import { questionFilterReducer } from '@features/question/questionFilter/model/filterSlice';
+import { questionsPageReducer } from '@features/question/questionPagination/model/questionPageSlice';
 import { combineReducers } from '@reduxjs/toolkit';
 import { baseApi } from '@shared/api';
 
 export const rootReducer = combineReducers({
 	[baseApi.reducerPath]: baseApi.reducer,
 	questionFilters: questionFilterReducer,
+	questionsPage: questionsPageReducer,
 });
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -477,6 +491,14 @@ export const store = configureStore({
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\app\providers\store\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export { store } from './configs/store';
+export { useAppDispatch, useAppSelector } from './configs/hooks';
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -537,11 +559,12 @@ FILE: src\app\styles\index.css
 	
 	--gap-40: 40px;
 	--gap-24: 24px;
-	--gap-20: 24px;
+	--gap-20: 20px;
 	--gap-16: 16px;
 	--gap-12: 12px;
 	--gap-10: 10px;
 	--gap-8: 8px;
+	--gap-4: 4px;
 
 	
 	--pd-40: 40px;
@@ -720,56 +743,58 @@ FILE: src\entities\question\api\questionApi.ts
 ────────────────────────────────────────────────────────────────────────────────
 
 import { baseApi } from '@shared/api';
-import type { PublicQuestion, PublicQuestionParams } from '../model/types';
-import type { ApiResponse } from '@shared/model';
 import { logoQuestion, preview } from '@shared/assets';
+import type { ApiResponse } from '@shared/model';
+import type {
+	PublicQuestion,
+	PublicQuestionParams,
+	PublicQuestionsApiResponse,
+} from '../model/types';
+
+const cleanParams = (params: Partial<PublicQuestionParams>) => {
+	const result: Record<string, string> = {};
+	Object.entries(params).forEach(([key, value]) => {
+		if (
+			value !== undefined &&
+			value !== null &&
+			(Array.isArray(value) ? value.length > 0 : true)
+		) {
+			result[key] = Array.isArray(value) ? value.join(',') : String(value);
+		}
+	});
+	return result;
+};
+
+const normalizeQuestion = (
+	question: PublicQuestion,
+	defaultImage: string
+): PublicQuestion => ({
+	...question,
+	imageSrc: question.imageSrc || defaultImage,
+	keywords: question.keywords ?? [],
+	questionSkills: question.questionSkills ?? [],
+	questionSpecializations: question.questionSpecializations ?? [],
+});
 
 const questionApi = baseApi.injectEndpoints({
 	endpoints: (builder) => ({
 		fetchQuestions: builder.query<
-			PublicQuestion[],
-			PublicQuestionParams | void
+			PublicQuestionsApiResponse,
+			(PublicQuestionParams & { page?: number }) | void
 		>({
-			query: (params) => {
-				const queryParams: Record<string, string> = {};
-				if (params?.specialization) {
-					queryParams.specialization = String(params.specialization);
-				}
-				if (params?.skills && params.skills.length > 0) {
-					queryParams.skills = params.skills.join(',');
-				}
-				if (params?.rate && params.rate.length > 0) {
-					queryParams.rate = params.rate.join(',');
-				}
-				if (params?.complexity && params.complexity.length > 0) {
-					queryParams.complexity = params.complexity.join(',');
-				}
-				if (params?.keywords && params.keywords.length > 0) {
-					queryParams.keywords = params.keywords.join(',');
-				}
-
-				return {
-					url: 'questions/public-questions',
-					params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
-				};
-			},
-			transformResponse: (response: ApiResponse<PublicQuestion>) =>
-				response.data.map((question) => ({
-					...question,
-					imageSrc: question.imageSrc || preview,
-					keywords: question.keywords ?? [],
-					questionSkills: question.questionSkills ?? [],
-					questionSpecializations: question.questionSpecializations ?? [],
-				})),
+			query: (params) => ({
+				url: 'questions/public-questions',
+				params: params ? cleanParams(params) : undefined,
+			}),
+			transformResponse: (response: ApiResponse<PublicQuestion>) => ({
+				...response,
+				data: response.data.map((q) => normalizeQuestion(q, preview)),
+			}),
 		}),
 		fetchQuestionById: builder.query<PublicQuestion, string>({
 			query: (id) => `questions/public-questions/${id}`,
-			transformResponse: (question: PublicQuestion) => ({
-				...question,
-				imageSrc: question.imageSrc || logoQuestion,
-				keywords: question.keywords ?? [],
-				questionSkills: question.questionSkills ?? [],
-			}),
+			transformResponse: (question: PublicQuestion) =>
+				normalizeQuestion(question, logoQuestion),
 		}),
 	}),
 });
@@ -820,6 +845,8 @@ export interface PublicQuestionParams {
 	rate?: number[];
 	complexity?: number[];
 	keywords?: string[];
+	page?: number;
+	limit?: number;
 }
 
 ────────────────────────────────────────────────────────────────────────────────
@@ -1127,36 +1154,112 @@ export const DEFAULT_SPECIALIZATION_ID = 11;
 FILE: src\features\question\questionFilter\model\filterSelectors.ts
 ────────────────────────────────────────────────────────────────────────────────
 
+import { createSelector } from '@reduxjs/toolkit';
 import type { RootState } from '@app/providers/store/configs/store';
+import type { Specialization } from '@entities/specialization';
+import type { Skill } from '@entities/skills';
 
-export const selectSkillsFilter = (state: RootState) =>
-	state.questionFilters.skills;
+const selectQuestionFiltersState = (state: RootState) => state.questionFilters;
 
-export const selectShowAllSkills = (state: RootState) =>
-	state.questionFilters.showAllSkills;
+export const selectSkillsFilter = createSelector(
+	[selectQuestionFiltersState],
+	(filters) => filters.skills
+);
 
-export const selectSpecializationsFilter = (state: RootState) =>
-	state.questionFilters.specializations;
+export const selectShowAllSkills = createSelector(
+	[selectQuestionFiltersState],
+	(filters) => filters.showAllSkills
+);
 
-export const selectShowAllSpecializations = (state: RootState) =>
-	state.questionFilters.showAllSpecializations;
+export const selectSpecializationsFilter = createSelector(
+	[selectQuestionFiltersState],
+	(filters) => filters.specializations
+);
 
-export const selectActiveSpecialization = (state: RootState) =>
-	state.questionFilters.specializations[0] ?? null;
+export const selectShowAllSpecializations = createSelector(
+	[selectQuestionFiltersState],
+	(filters) => filters.showAllSpecializations
+);
 
-export const selectActiveRate = (state: RootState) =>
-	state.questionFilters.rate[0] ?? null;
+export const selectActiveSpecialization = createSelector(
+	[selectSpecializationsFilter],
+	(specializations): Specialization | null => specializations[0] ?? null
+);
 
-export const selectActiveComplexity = (state: RootState) =>
-	state.questionFilters.complexity[0] ?? null;
+export const selectActiveSpecializationId = createSelector(
+	[selectActiveSpecialization],
+	(specialization): number | null => specialization?.id ?? null
+);
 
-export const selectQuestionFilters = (state: RootState) => ({
-	skills: state.questionFilters.skills.map((skill) => skill.id),
-	specialization: state.questionFilters.specializations[0]?.id,
-	complexity: state.questionFilters.complexity,
-	rate: state.questionFilters.rate,
-	keywords: state.questionFilters.keywords,
-});
+export const selectActiveRate = createSelector(
+	[selectQuestionFiltersState],
+	(filters) => filters.rate[0] ?? null
+);
+
+export const selectActiveComplexity = createSelector(
+	[selectQuestionFiltersState],
+	(filters) => filters.complexity[0] ?? null
+);
+
+export const selectAllComplexity = createSelector(
+	[selectQuestionFiltersState],
+	(filters) => filters.complexity
+);
+
+export const selectAllRate = createSelector(
+	[selectQuestionFiltersState],
+	(filters) => filters.rate
+);
+
+export const selectKeywords = createSelector(
+	[selectQuestionFiltersState],
+	(filters) => filters.keywords
+);
+
+export const selectQuestionFilters = createSelector(
+	[
+		selectSkillsFilter,
+		selectSpecializationsFilter,
+		selectAllComplexity,
+		selectAllRate,
+		selectKeywords,
+	],
+	(skills, specializations, complexity, rate, keywords) => ({
+		skills: skills.map((skill: Skill) => skill.id),
+		specialization: specializations[0]?.id,
+		complexity,
+		rate,
+		keywords,
+	})
+);
+
+export const selectHasActiveFilters = createSelector(
+	[selectQuestionFilters],
+	({ skills, complexity, rate, keywords }) => {
+		return (
+			skills.length > 0 ||
+			complexity.length > 0 ||
+			rate.length > 0 ||
+			keywords.length > 0
+		);
+	}
+);
+
+export const selectSelectedSkillIds = createSelector(
+	[selectSkillsFilter],
+	(skills) => skills.map((skill: Skill) => skill.id)
+);
+
+export const makeSelectIsSkillSelected = (skillId: number) =>
+	createSelector([selectSelectedSkillIds], (selectedIds) =>
+		selectedIds.includes(skillId)
+	);
+
+export const makeSelectIsSpecializationSelected = (specializationId: number) =>
+	createSelector(
+		[selectActiveSpecializationId],
+		(activeId) => activeId === specializationId
+	);
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -1268,13 +1371,10 @@ export interface QuestionFilterState {
 FILE: src\features\question\questionFilter\ui\ComplexityFilter\ComplexityFilter.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
-import { FilterBase } from '@shared/ui/index';
+import { useAppDispatch, useAppSelector } from '@app/providers/store';
 import { difficultyButtons } from '../../model/constants';
-import {
-	useAppDispatch,
-	useAppSelector,
-} from '@app/providers/store/configs/hooks';
 import { setComplexity } from '../../model/filterSlice';
+import { FilterBase } from '@shared/ui';
 
 const ComplexityFilter = () => {
 	const dispatch = useAppDispatch();
@@ -1322,13 +1422,10 @@ export default ComplexityFilter;
 FILE: src\features\question\questionFilter\ui\RatingFilter\RatingFilter.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
-import { FilterBase } from '@shared/ui/index';
+import { useAppDispatch, useAppSelector } from '@app/providers/store';
 import { ratingButtons } from '../../model/constants';
-import {
-	useAppDispatch,
-	useAppSelector,
-} from '@app/providers/store/configs/hooks';
 import { setRating } from '../../model/filterSlice';
+import { FilterBase } from '@shared/ui';
 
 const RatingFilter = () => {
 	const dispatch = useAppDispatch();
@@ -1414,7 +1511,7 @@ import styles from './SearchInput.module.css';
 import { Image } from '@shared/ui';
 import { search } from '@shared/assets';
 import { useEffect, useState } from 'react';
-import { useDebounce } from '@shared/hooks/useDebounce';
+import { useDebounce } from '@shared/lib/hooks/useDebounce';
 import { useAppDispatch } from '@app/providers/store/configs/hooks';
 import { setSearch } from '../../model/filterSlice';
 
@@ -1453,7 +1550,7 @@ import {
 	useAppSelector,
 } from '@app/providers/store/configs/hooks';
 import { useFetchSkillsQuery } from '@entities/skills/api/skillsApi';
-import { CenteredSpinner, EmptyState, FilterBase, Spinner } from '@shared/ui';
+import { EmptyState, FilterBase, Spinner } from '@shared/ui';
 import {
 	selectShowAllSkills,
 	selectSkillsFilter,
@@ -1600,11 +1697,222 @@ export default SpecializationFilter;
 
 ────────────────────────────────────────────────────────────────────────────────
 
+FILE: src\features\question\questionPagination\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export { QuestionPagePagination } from './ui/QuestionPagePagination';
+export { selectQuestionsPage } from './model/questionPageSelectors';
+export { setPage, resetPage } from './model/questionPageSlice';
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\features\question\questionPagination\model\questionPageSelectors.ts
+────────────────────────────────────────────────────────────────────────────────
+
+import type { RootState } from '@app/providers/store/configs/store';
+
+export const selectQuestionsPage = (state: RootState) =>
+	state.questionsPage.page;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\features\question\questionPagination\model\questionPageSlice.ts
+────────────────────────────────────────────────────────────────────────────────
+
+import { createSlice, isAnyOf } from '@reduxjs/toolkit';
+import type { PayloadAction } from '@reduxjs/toolkit';
+import {
+	selectSkill,
+	setSpecialization,
+	setComplexity,
+	setRating,
+	setSearch,
+	resetFilters,
+} from '@features/question/questionFilter/model/filterSlice';
+export interface QuestionsPageState {
+	page: number;
+}
+
+const initialState: QuestionsPageState = {
+	page: 1,
+};
+
+const questionsPageSlice = createSlice({
+	name: 'questionsPage',
+	initialState,
+	reducers: {
+		setPage: (state, action: PayloadAction<number>) => {
+			state.page = action.payload;
+		},
+		resetPage: (state) => {
+			state.page = 1;
+		},
+	},
+	extraReducers: (builder) => {
+		builder.addMatcher(
+			isAnyOf(
+				selectSkill,
+				setSpecialization,
+				setComplexity,
+				setRating,
+				setSearch,
+				resetFilters
+			),
+			(state) => {
+				state.page = 1;
+			}
+		);
+	},
+});
+
+export const { setPage, resetPage } = questionsPageSlice.actions;
+export const questionsPageReducer = questionsPageSlice.reducer;
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\features\question\questionPagination\ui\QuestionPagePagination.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import { Pagination } from '@shared/ui';
+import { useAppDispatch } from '@app/providers/store/configs/hooks';
+import { selectQuestionsPage } from '../model/questionPageSelectors';
+import { setPage } from '../model/questionPageSlice';
+import { useSelector } from 'react-redux';
+import type { PublicQuestionsApiResponse } from '@entities/question/model/types';
+
+interface QuestionPagePaginationProps {
+	questionsResponse?: PublicQuestionsApiResponse;
+}
+
+export const QuestionPagePagination = ({
+	questionsResponse,
+}: QuestionPagePaginationProps) => {
+	const dispatch = useAppDispatch();
+	const page = useSelector(selectQuestionsPage);
+
+	const handlePreviousPage = () => {
+		if (page > 1) {
+			dispatch(setPage(page - 1));
+		}
+	};
+
+	const handleNextPage = () => {
+		if (
+			questionsResponse &&
+			page < Math.ceil(questionsResponse.total / questionsResponse.limit)
+		) {
+			dispatch(setPage(page + 1));
+		}
+	};
+
+	const handlePageClick = (newPage: number) => {
+		dispatch(setPage(newPage));
+	};
+
+	if (
+		!questionsResponse?.data ||
+		questionsResponse.total <= questionsResponse.limit
+	)
+		return null;
+
+	const totalPages = Math.ceil(
+		questionsResponse.total / questionsResponse.limit
+	);
+
+	return (
+		<Pagination
+			bottom
+			handlePreviousPage={handlePreviousPage}
+			handleNextPage={handleNextPage}
+			handlePageClick={handlePageClick}
+			currentPage={page}
+			totalPages={totalPages}
+		/>
+	);
+};
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\pages\NotFoundPage\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export { default as NotFoundPage } from './ui/NotFoundPage';
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\pages\NotFoundPage\ui\NotFoundPage.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.container {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 100vh;
+}
+
+.content {
+	text-align: center;
+	max-width: 500px;
+}
+
+.title {
+	color: var(--color-black-800);
+	margin-bottom: var(--mb-40);
+}
+
+.actions {
+	display: flex;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: var(--gap-8);
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\pages\NotFoundPage\ui\NotFoundPage.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './NotFoundPage.module.css';
+import { Button } from '@shared/ui';
+import { useNavigate } from 'react-router-dom';
+
+const NotFoundPage = () => {
+	const navigate = useNavigate();
+
+	const handleGoHome = () => {
+		navigate('/');
+	};
+
+	return (
+		<div className={styles.container}>
+			<div className={styles.content}>
+				<h1 className={styles.title}>
+					404
+					<br /> Страница не найдена
+				</h1>
+				<div className={styles.actions}>
+					<Button
+						type='primary'
+						size='M'
+						state='default'
+						onClick={handleGoHome}
+					>
+						На главную
+					</Button>
+				</div>
+			</div>
+		</div>
+	);
+};
+
+export default NotFoundPage;
+
+────────────────────────────────────────────────────────────────────────────────
+
 FILE: src\pages\questionDetail\index.ts
 ────────────────────────────────────────────────────────────────────────────────
 
-import QuestionDetailPage from './ui/QuestionDetailPage';
-export default QuestionDetailPage;
+export { default as QuestionDetailPage } from './ui/QuestionDetailPage';
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -1629,12 +1937,11 @@ FILE: src\pages\questionDetail\ui\QuestionDetailPage.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
 import styles from './QuestionDetailPage.module.css';
-import { useFetchQuestionByIdQuery } from '@entities/question/api/questionApi';
 import { Link, useParams } from 'react-router-dom';
 import { Image } from '@shared/ui';
 import { arrowLeft } from '@shared/assets';
-import QuestionDetail from '@widgets/question/ui/QuestionDetail/QuestionDetail';
-import QuestionDetailSkeleton from '@widgets/question/ui/QuestionDetail/QuestionDetailSkeleton';
+import { useFetchQuestionByIdQuery } from '@entities/question/api/questionApi';
+import { QuestionDetail, QuestionDetailSkeleton } from '@widgets/question';
 
 const QuestionDetailPage = () => {
 	const { questionId } = useParams<{ questionId: string }>();
@@ -1660,8 +1967,7 @@ export default QuestionDetailPage;
 FILE: src\pages\questionMain\index.ts
 ────────────────────────────────────────────────────────────────────────────────
 
-import QuestionMainPage from './ui/QuestionMainPage';
-export default QuestionMainPage;
+export { default as QuestionMainPage } from './ui/QuestionMainPage';
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -1752,7 +2058,70 @@ export { default as search } from './icons/search.svg';
 
 ────────────────────────────────────────────────────────────────────────────────
 
-FILE: src\shared\hooks\useDebounce.ts
+FILE: src\shared\lib\helpers\getPaginationRange.ts
+────────────────────────────────────────────────────────────────────────────────
+
+const DOTS = 'DOTS' as const;
+
+type PaginationItem = number | typeof DOTS;
+
+interface GetPaginationRangeParams {
+	totalPages: number;
+	currentPage: number;
+	siblingCount?: number;
+}
+
+export const getPaginationRange = ({
+	totalPages,
+	currentPage,
+	siblingCount = 2,
+}: GetPaginationRangeParams): PaginationItem[] => {
+	const totalNumbers = siblingCount * 2 + 5;
+
+	if (totalPages <= totalNumbers) {
+		return Array.from({ length: totalPages }, (_, i) => i + 1);
+	}
+
+	const leftSiblingIndex = Math.max(currentPage - siblingCount, 2);
+	const rightSiblingIndex = Math.min(
+		currentPage + siblingCount,
+		totalPages - 1
+	);
+
+	const shouldShowLeftDots = leftSiblingIndex > 2;
+	const shouldShowRightDots = rightSiblingIndex < totalPages - 1;
+
+	if (!shouldShowLeftDots && shouldShowRightDots) {
+		const leftRange = Array.from(
+			{ length: siblingCount * 2 + 3 },
+			(_, i) => i + 1
+		);
+
+		return [...leftRange, DOTS, totalPages];
+	}
+
+	if (shouldShowLeftDots && !shouldShowRightDots) {
+		const rightRange = Array.from(
+			{ length: siblingCount * 2 + 3 },
+			(_, i) => totalPages - (siblingCount * 2 + 2) + i
+		);
+
+		return [1, DOTS, ...rightRange];
+	}
+
+	const middleRange = Array.from(
+		{ length: rightSiblingIndex - leftSiblingIndex + 1 },
+		(_, i) => leftSiblingIndex + i
+	);
+
+	return [1, DOTS, ...middleRange, DOTS, totalPages];
+};
+
+export { DOTS };
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\lib\hooks\useDebounce.ts
 ────────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useState } from 'react';
@@ -1773,6 +2142,14 @@ export const useDebounce = (value: string, delay = 300) => {
 
 ────────────────────────────────────────────────────────────────────────────────
 
+FILE: src\shared\lib\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export { useDebounce } from './hooks/useDebounce';
+export { getPaginationRange } from './helpers/getPaginationRange';
+
+────────────────────────────────────────────────────────────────────────────────
+
 FILE: src\shared\model\index.ts
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -1789,13 +2166,11 @@ export interface ApiResponse<T> {
 	limit: number;
 	data: T[];
 }
-
 export interface FilterItem {
 	id: number;
 	title: string;
 	isActive?: boolean;
 }
-
 export interface FilterBaseProps {
 	title: string;
 	items: FilterItem[];
@@ -1838,7 +2213,6 @@ FILE: src\shared\ui\Article\Article.tsx
 
 import styles from './Article.module.css';
 import type { ReactNode } from 'react';
-
 interface ArticleProps {
 	type: 'brief' | 'short' | 'long';
 	children: ReactNode;
@@ -1863,6 +2237,22 @@ FILE: src\shared\ui\Button\Button.module.css
 	cursor: pointer;
 	outline: none;
 	border: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--gap-8);
+	border-radius: var(--border-radius-8);
+	background: transparent;
+	transition: background-color 0.2s ease, color 0.2s ease,
+		border-color 0.2s ease;
+}
+
+.sizeM {
+	min-height: 36px;
+}
+
+.sizeL {
+	min-height: 44px;
 }
 
 .primary {
@@ -1870,7 +2260,6 @@ FILE: src\shared\ui\Button\Button.module.css
 	color: var(--color-white);
 	padding: var(--pd-12) var(--pd-29);
 	border-radius: var(--border-radius-12);
-	transition: background-color 0.2s ease;
 }
 
 .primary:hover {
@@ -1881,7 +2270,7 @@ FILE: src\shared\ui\Button\Button.module.css
 	background-color: transparent;
 	color: var(--color-purple-700);
 	transition: text-decoration 0.2s ease;
-	text-align: left;
+	justify-content: flex-start;
 }
 
 .link:hover {
@@ -1893,7 +2282,6 @@ FILE: src\shared\ui\Button\Button.module.css
 	border: 1px solid var(--color-black-200);
 	border-radius: var(--border-radius-12);
 	background-color: transparent;
-	transition: background-color 0.1s ease, border-color 0.1s ease;
 }
 
 .skill:hover {
@@ -1908,67 +2296,120 @@ FILE: src\shared\ui\Button\Button.module.css
 	border-color: var(--color-purple-700);
 }
 
+.pagination {
+	min-width: 30px;
+	height: 30px;
+	border-radius: var(--border-radius-12);
+}
+
+.pagination:hover {
+	background-color: rgba(85, 9, 204, 0.08);
+}
+
+.paginationActive {
+	background-color: var(--color-purple-700);
+	color: var(--color-white);
+}
+
+.button.disabled {
+	cursor: default;
+	opacity: 0.5;
+	pointer-events: none;
+}
+
 ────────────────────────────────────────────────────────────────────────────────
 
 FILE: src\shared\ui\Button\Button.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
 import styles from './Button.module.css';
-import type { MouseEventHandler, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, MouseEventHandler, ReactNode } from 'react';
 
-type ButtonType = 'primary' | 'link' | 'skill';
+type ButtonType = 'primary' | 'link' | 'skill' | 'pagination';
 type ButtonSize = 'M' | 'L';
 type ButtonState = 'default' | 'disabled';
-
-interface ButtonProps {
+interface ButtonProps
+	extends Omit<
+		ButtonHTMLAttributes<HTMLButtonElement>,
+		'type' | 'children' | 'onClick'
+	> {
 	children: ReactNode;
 	type: ButtonType;
-	size: ButtonSize;
-	state: ButtonState;
+	size?: ButtonSize;
+	state?: ButtonState;
+	disabled?: boolean;
+	className?: string;
 	onClick?: MouseEventHandler<HTMLButtonElement>;
 	isActive?: boolean;
 }
 
 const getButtonClasses = (
-	type: ButtonType,
+	buttonType: ButtonType,
 	size: ButtonSize,
-	state: ButtonState,
-	isActive?: boolean
+	isDisabled: boolean,
+	isActive?: boolean,
+	className?: string
 ): string => {
-	const classMap = {
-		button: styles.button,
-		primary: type === 'primary' ? styles.primary : '',
-		link: type === 'link' ? `${styles.link} text-14-reg` : '',
-		skill: type === 'skill' ? `${styles.skill} text-16-med` : '',
-		sizeM: size === 'M' ? styles.sizeM : '',
-		sizeL: size === 'L' ? styles.sizeL : '',
-		disabled: state === 'disabled' ? styles.disabled : '',
-		skillActive: type === 'skill' && isActive ? styles.skillActive : '',
-	};
+	const classes: string[] = [styles.button];
 
-	return Object.values(classMap).filter(Boolean).join(' ');
+	if (buttonType === 'primary') classes.push(styles.primary);
+	if (buttonType === 'link') classes.push(styles.link, 'text-14-reg');
+	if (buttonType === 'skill') classes.push(styles.skill, 'text-16-med');
+	if (buttonType === 'pagination') classes.push(styles.pagination);
+
+	if (size === 'M') classes.push(styles.sizeM);
+	if (size === 'L') classes.push(styles.sizeL);
+
+	if (isDisabled) classes.push(styles.disabled);
+
+	if (buttonType === 'pagination' && isActive) {
+		classes.push(styles.paginationActive);
+		const disabledIndex = classes.indexOf(styles.disabled);
+		if (disabledIndex > -1) {
+			classes.splice(disabledIndex, 1);
+		}
+	}
+
+	if (buttonType === 'skill' && isActive) classes.push(styles.skillActive);
+
+	if (className) classes.push(className);
+
+	return classes.filter(Boolean).join(' ');
 };
 
 const Button = ({
-	type,
-	size,
-	state,
+	type: buttonType,
+	size = 'M',
+	state = 'default',
+	disabled = false,
 	children,
 	onClick,
 	isActive,
+	className,
+	...rest
 }: ButtonProps) => {
-	const buttonClasses = getButtonClasses(type, size, state, isActive);
+	const isDisabled = disabled || state === 'disabled';
 
-	const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-		if (state === 'disabled') return;
-		onClick?.(e);
+	const handleClick: MouseEventHandler<HTMLButtonElement> = (event) => {
+		if (isDisabled) return;
+		onClick?.(event);
 	};
+
+	const buttonClasses = getButtonClasses(
+		buttonType,
+		size,
+		isDisabled,
+		isActive,
+		className
+	);
 
 	return (
 		<button
 			onClick={handleClick}
 			className={buttonClasses}
-			disabled={state === 'disabled'}
+			disabled={isDisabled}
+			type='button'
+			{...rest}
 		>
 			{children}
 		</button>
@@ -2005,7 +2446,7 @@ FILE: src\shared\ui\EmptyState\EmptyState.module.css
 }
 
 .message {
-	color: var(--color-black-600);
+	color: var(--color-black-700);
 	max-width: 400px;
 	line-height: var(--lh-130);
 }
@@ -2022,7 +2463,6 @@ FILE: src\shared\ui\EmptyState\EmptyState.tsx
 import styles from './EmptyState.module.css';
 import { Button, Image } from '@shared/ui';
 import { search } from '@shared/assets';
-
 interface EmptyStateProps {
 	title?: string;
 	message?: string;
@@ -2159,7 +2599,6 @@ FILE: src\shared\ui\Image\Image.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
 import styles from './Image.module.css';
-
 interface ImageProps {
 	src?: string;
 	alt?: string;
@@ -2185,6 +2624,8 @@ export { default as Article } from './Article/Article';
 export { default as Spinner } from './Spinner/Spinner';
 export { default as CenteredSpinner } from './Spinner/CenteredSpinner';
 export { default as EmptyState } from './EmptyState/EmptyState';
+export { default as Pagination } from './Pagination/ui/Pagination/Pagination';
+export { default as PaginationButtons } from './Pagination/ui/PaginationButtons/PaginationButtons';
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -2202,12 +2643,185 @@ export default Logo;
 
 ────────────────────────────────────────────────────────────────────────────────
 
+FILE: src\shared\ui\Pagination\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export { default as Pagination } from './ui/Pagination/Pagination';
+export { default as PaginationButtons } from './ui/PaginationButtons/PaginationButtons';
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\Pagination\model\types.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export interface PaginationProps {
+	handleNextPage: () => void;
+	handlePreviousPage: () => void;
+	handlePageClick: (page: number) => void;
+	currentPage: number;
+	totalPages: number;
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\Pagination\ui\Pagination\Pagination.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import type { PaginationProps } from '../../model/types';
+import PaginationButtons from '../PaginationButtons/PaginationButtons';
+
+interface Props {
+	top?: boolean;
+	bottom?: boolean;
+}
+
+export default function Pagination({
+	top,
+	bottom,
+	...paginationProps
+}: Props & PaginationProps) {
+	return (
+		<>
+			{top && <PaginationButtons {...paginationProps} />}
+			{bottom && <PaginationButtons {...paginationProps} />}
+		</>
+	);
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\Pagination\ui\PaginationButtons\PaginationButtons.module.css
+────────────────────────────────────────────────────────────────────────────────
+
+.pagination {
+	display: flex;
+	gap: var(--gap-12);
+	align-items: center;
+	justify-content: center;
+}
+
+.list {
+	display: flex;
+	align-items: center;
+	gap: var(--gap-4);
+}
+
+.pageButton {
+	font-size: var(--fs-14);
+}
+
+.arrowDisabled {
+	border-color: var(--color-black-100);
+}
+
+.arrowIcon {
+	width: 28px;
+	height: 28px;
+}
+
+.dots {
+	padding: 0 var(--pd-6);
+	color: var(--color-black-300);
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
+FILE: src\shared\ui\Pagination\ui\PaginationButtons\PaginationButtons.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+import styles from './PaginationButtons.module.css';
+import type { PaginationProps } from '../../model/types';
+import { getPaginationRange } from '@shared/lib';
+import { DOTS } from '@shared/lib/helpers/getPaginationRange';
+import { Button, Image } from '@shared/ui';
+import { arrowLeftCircle, arrowRightCircle } from '@shared/assets';
+
+export default function PaginationButtons({
+	handleNextPage,
+	handlePreviousPage,
+	handlePageClick,
+	currentPage,
+	totalPages,
+}: PaginationProps) {
+	const pages = getPaginationRange({
+		currentPage,
+		totalPages,
+		siblingCount: 2,
+	});
+
+	const isFirstPage = currentPage <= 1;
+	const isLastPage = currentPage >= totalPages;
+
+	return (
+		<div className={styles.pagination}>
+			<Button
+				type='pagination'
+				size='M'
+				disabled={isFirstPage}
+				className={`${styles.arrowButton} ${
+					isFirstPage ? styles.arrowDisabled : ''
+				}`}
+				onClick={handlePreviousPage}
+				aria-label='Предыдущая страница'
+			>
+				<Image src={arrowLeftCircle} className={styles.arrowIcon} alt='Назад' />
+			</Button>
+
+			<div className={styles.list}>
+				{pages.map((item, index) => {
+					if (item === DOTS) {
+						return (
+							<span key={`dots-${index}`} className={styles.dots}>
+								…
+							</span>
+						);
+					}
+
+					const isActive = item === currentPage;
+
+					return (
+						<Button
+							key={item}
+							type='pagination'
+							size='M'
+							disabled={isActive}
+							isActive={isActive}
+							className={styles.pageButton}
+							onClick={() => handlePageClick(item)}
+						>
+							{item}
+						</Button>
+					);
+				})}
+			</div>
+
+			<Button
+				type='pagination'
+				size='M'
+				disabled={isLastPage}
+				className={`${styles.arrowButton} ${
+					isLastPage ? styles.arrowDisabled : ''
+				}`}
+				onClick={handleNextPage}
+				aria-label='Следующая страница'
+			>
+				<Image
+					src={arrowRightCircle}
+					className={styles.arrowIcon}
+					alt='Вперёд'
+				/>
+			</Button>
+		</div>
+	);
+}
+
+────────────────────────────────────────────────────────────────────────────────
+
 FILE: src\shared\ui\Spinner\CenteredSpinner.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
 import styles from './Spinner.module.css';
 import Spinner from './Spinner';
-
 interface CenteredSpinnerProps extends React.ComponentProps<typeof Spinner> {
 	message?: string;
 	fullPage?: boolean;
@@ -2356,7 +2970,6 @@ FILE: src\shared\ui\Spinner\Spinner.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
 import styles from './Spinner.module.css';
-
 interface SpinnerProps {
 	size?: 'sm' | 'md' | 'lg';
 	color?: 'primary' | 'white' | 'black';
@@ -2382,17 +2995,23 @@ export default Spinner;
 
 ────────────────────────────────────────────────────────────────────────────────
 
+FILE: src\widgets\error\index.ts
+────────────────────────────────────────────────────────────────────────────────
+
+export { default as ErrorBoundary } from './ui/ErrorBoundary/ErrorBoundary';
+export { default as ErrorFallback } from './ui/ErrorFallback/ErrorFallback';
+
+────────────────────────────────────────────────────────────────────────────────
+
 FILE: src\widgets\error\ui\ErrorBoundary\ErrorBoundary.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
 import ErrorFallback from '../ErrorFallback/ErrorFallback';
-
 interface ErrorBoundaryState {
 	hasError: boolean;
 	error?: Error;
 }
-
 class ErrorBoundary extends React.Component<
 	React.PropsWithChildren<{
 		fallback?: React.ComponentType<{ error?: Error }>;
@@ -2495,7 +3114,6 @@ FILE: src\widgets\error\ui\ErrorFallback\ErrorFallback.tsx
 import styles from './ErrorFallback.module.css';
 import { Button } from '@shared/ui';
 import { useNavigate } from 'react-router-dom';
-
 interface ErrorFallbackProps {
 	error?: Error;
 	resetError?: () => void;
@@ -2634,11 +3252,11 @@ export default Header;
 FILE: src\widgets\question\index.ts
 ────────────────────────────────────────────────────────────────────────────────
 
+export { default as QuestionDetail } from './ui/QuestionDetail/QuestionDetail';
 export { default as QuestionFilters } from './ui/QuestionFilters/QuestionFilters';
 export { default as QuestionInfo } from './ui/QuestionInfo/QuestionInfo';
 export { default as QuestionList } from './ui/QuestionList/QuestionList';
 export { default as QuestionSidebar } from './ui/QuestionSidebar/QuestionSidebar';
-export { default as QuestionDetail } from './ui/QuestionDetail/QuestionDetail';
 
 export { default as QuestionListSkeleton } from './ui/QuestionList/QuestionListSkeleton';
 export { default as QuestionFiltersSkeleton } from './ui/QuestionFilters/QuestionFiltersSkeleton';
@@ -2775,10 +3393,9 @@ FILE: src\widgets\question\ui\QuestionDetail\QuestionDetail.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
 import styles from './QuestionDetail.module.css';
-import type { PublicQuestion } from '@entities/question/model/types';
 import QuestionInfo from '../QuestionInfo/QuestionInfo';
 import QuestionSidebar from '../QuestionSidebar/QuestionSidebar';
-
+import type { PublicQuestion } from '@entities/question/model/types';
 interface QuestionDetailProps {
 	question: PublicQuestion;
 }
@@ -3125,6 +3742,7 @@ FILE: src\widgets\question\ui\QuestionList\QuestionList.module.css
 	gap: var(--gap-24);
 	list-style: none;
 	padding-left: 0;
+	margin-bottom: var(--mb-40);
 }
 
 .list li,
@@ -3199,48 +3817,53 @@ FILE: src\widgets\question\ui\QuestionList\QuestionList.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
 import styles from './QuestionList.module.css';
-import { QuestionItem } from '@entities/question';
-import { useFetchQuestionsQuery } from '@entities/question/api/questionApi';
-import {
-	useAppDispatch,
-	useAppSelector,
-} from '@app/providers/store/configs/hooks';
+import { useAppDispatch, useAppSelector } from '@app/providers/store';
 import {
 	selectActiveSpecialization,
 	selectQuestionFilters,
 } from '@features/question/questionFilter';
-import { CenteredSpinner, EmptyState } from '@shared/ui';
-import { resetFilters } from '@features/question/questionFilter/model/filterSlice';
+import {
+	QuestionPagePagination,
+	selectQuestionsPage,
+} from '@features/question/questionPagination';
+import { useFetchQuestionsQuery } from '@entities/question/api/questionApi';
 import QuestionListSkeleton from './QuestionListSkeleton';
+import { EmptyState } from '@shared/ui';
+import { resetFilters } from '@features/question/questionFilter/model/filterSlice';
+import { QuestionItem } from '@entities/question';
 
 const QuestionList = () => {
 	const dispatch = useAppDispatch();
-	const { skills, rate, complexity, keywords } = useAppSelector(
-		selectQuestionFilters
-	);
+	const filters = useAppSelector(selectQuestionFilters);
 	const activeSpecialization = useAppSelector(selectActiveSpecialization);
+	const page = useAppSelector(selectQuestionsPage);
 
 	const queryArgs = activeSpecialization
 		? {
-				skills,
-				rate,
-				complexity,
+				...filters,
 				specialization: activeSpecialization.id,
-				keywords,
+				page,
+				limit: 10,
 		  }
 		: undefined;
 
-	const { data: questions, isLoading } = useFetchQuestionsQuery(queryArgs);
+	const {
+		data: questionsResponse,
+		isLoading,
+		isFetching,
+	} = useFetchQuestionsQuery(queryArgs);
 
-	if (isLoading) return <QuestionListSkeleton count={questions?.length || 0} />;
+	if (isLoading || isFetching) return <QuestionListSkeleton count={10} />;
 
-	if (!questions || questions.length === 0)
+	if (!questionsResponse?.data || questionsResponse.data.length === 0)
 		return (
 			<EmptyState
 				title='Вопросы не найдены'
 				message='Попробуйте изменить параметры фильтрации или выбрать другую специализацию'
 				actionLabel='Сбросить фильтры'
-				onAction={() => dispatch(resetFilters())}
+				onAction={() => {
+					dispatch(resetFilters());
+				}}
 			/>
 		);
 
@@ -3249,10 +3872,12 @@ const QuestionList = () => {
 			<article className={styles.content}>
 				<h3 className={styles.text}>Вопросы {activeSpecialization?.title}</h3>
 				<ul className={styles.list}>
-					{questions.map((question) => (
+					{questionsResponse.data.map((question) => (
 						<QuestionItem key={question.id} question={question} />
 					))}
 				</ul>
+
+				<QuestionPagePagination questionsResponse={questionsResponse} />
 			</article>
 		</div>
 	);
@@ -3266,7 +3891,6 @@ FILE: src\widgets\question\ui\QuestionList\QuestionListSkeleton.tsx
 ────────────────────────────────────────────────────────────────────────────────
 
 import styles from './QuestionList.module.css';
-
 interface QuestionListSkeletonProps {
 	count?: number;
 }
@@ -3278,7 +3902,7 @@ const QuestionListSkeleton = ({ count = 5 }: QuestionListSkeletonProps) => {
 				<div className={`${styles.skeletonHeader} skeleton-pulse`}></div>
 
 				<ul className={styles.listSkeleton}>
-					{Array.from({ length: count }, (_, i) => (
+					{[...Array(count)].map((_, i) => (
 						<li key={i} className={styles.itemSkeleton}>
 							<div className={`${styles.skeletonTitle} skeleton-pulse`}></div>
 
@@ -3346,7 +3970,7 @@ FILE: src\widgets\question\ui\QuestionSidebar\QuestionSidebar.tsx
 import styles from './QuestionSidebar.module.css';
 import { QuestionMeta } from '@entities/question';
 import type { PublicQuestion } from '@entities/question/model/types';
-import { Button } from '@shared/ui/index';
+import { Button } from '@shared/ui';
 interface QuestionSidebarProps {
 	question: PublicQuestion;
 }

@@ -1,2 +1,1 @@
-import QuestionMainPage from './ui/QuestionMainPage';
-export default QuestionMainPage;
+export { default as QuestionMainPage } from './ui/QuestionMainPage';

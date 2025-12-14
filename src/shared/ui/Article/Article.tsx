@@ -1,6 +1,5 @@
 import styles from './Article.module.css';
 import type { ReactNode } from 'react';
-
 interface ArticleProps {
 	type: 'brief' | 'short' | 'long';
 	children: ReactNode;

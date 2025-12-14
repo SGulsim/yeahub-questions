@@ -1,5 +1,4 @@
 import styles from './Image.module.css';
-
 interface ImageProps {
 	src?: string;
 	alt?: string;
