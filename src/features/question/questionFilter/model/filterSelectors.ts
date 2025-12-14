@@ -26,4 +26,5 @@ export const selectQuestionFilters = (state: RootState) => ({
 	specialization: state.questionFilters.specializations[0]?.id,
 	complexity: state.questionFilters.complexity,
 	rate: state.questionFilters.rate,
+	keywords: state.questionFilters.keywords,
 });

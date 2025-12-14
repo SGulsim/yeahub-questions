@@ -8,7 +8,9 @@ import {
 } from '@features/question/questionFilter';
 
 const QuestionList = () => {
-	const { skills, rate, complexity } = useAppSelector(selectQuestionFilters);
+	const { skills, rate, complexity, keywords } = useAppSelector(
+		selectQuestionFilters
+	);
 	const activeSpecialization = useAppSelector(selectActiveSpecialization);
 
 	const queryArgs = activeSpecialization
@@ -17,6 +19,7 @@ const QuestionList = () => {
 				rate,
 				complexity,
 				specialization: activeSpecialization.id,
+				keywords,
 		  }
 		: undefined;
 
@@ -24,11 +27,8 @@ const QuestionList = () => {
 		data: questions,
 		isLoading,
 		isError,
-	} = useFetchQuestionsQuery(queryArgs, {
-		refetchOnMountOrArgChange: true,
-	});
+	} = useFetchQuestionsQuery(queryArgs);
 
-	if (!activeSpecialization) return <div>Загрузка...</div>;
 	if (isLoading) return <div>Загрузка...</div>;
 	if (isError || !questions) return <div>Ошибка...</div>;
 
@@ -37,9 +37,13 @@ const QuestionList = () => {
 			<article className={styles.content}>
 				<h3 className={styles.text}>Вопросы {activeSpecialization.title}</h3>
 				<ul className={styles.list}>
-					{questions.map((question) => (
-						<QuestionItem key={question.id} question={question} />
-					))}
+					{questions.length > 0 ? (
+						questions.map((question) => (
+							<QuestionItem key={question.id} question={question} />
+						))
+					) : (
+						<div>Нет данных по данному запросу</div>
+					)}
 				</ul>
 			</article>
 		</div>

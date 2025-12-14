@@ -25,4 +25,5 @@ export interface PublicQuestionParams {
 	specialization?: number;
 	rate?: number[];
 	complexity?: number[];
+	keywords?: string[];
 }

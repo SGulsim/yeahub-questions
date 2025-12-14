@@ -10,7 +10,6 @@ const questionApi = baseApi.injectEndpoints({
 			PublicQuestionParams | void
 		>({
 			query: (params) => {
-				console.log(params);
 				const queryParams: Record<string, string> = {};
 				if (params?.specialization) {
 					queryParams.specialization = String(params.specialization);
@@ -19,13 +18,15 @@ const questionApi = baseApi.injectEndpoints({
 					queryParams.skills = params.skills.join(',');
 				}
 				if (params?.rate && params.rate.length > 0) {
-					console.log(params.rate.join(','));
-
 					queryParams.rate = params.rate.join(',');
 				}
 				if (params?.complexity && params.complexity.length > 0) {
 					queryParams.complexity = params.complexity.join(',');
 				}
+				if (params?.keywords && params.keywords.length > 0) {
+					queryParams.keywords = params.keywords.join(',');
+				}
+				console.log(Object.keys(queryParams), queryParams);
 
 				return {
 					url: 'questions/public-questions',
