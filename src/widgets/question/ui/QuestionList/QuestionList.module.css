@@ -1,4 +1,5 @@
-.wrapper {
+.wrapper,
+.skeletonWrapper {
 	padding: var(--pd-24) var(--pd-20) var(--pd-40);
 	background-color: var(--color-white);
 	border-radius: var(--border-radius-24);
@@ -39,6 +40,10 @@
 }
 
 /* Скелетон стили */
+.skeletonWrapper {
+	width: 750px;
+}
+
 .skeletonHeader {
 	width: 200px;
 	height: 32px;

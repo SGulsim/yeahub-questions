@@ -6,6 +6,7 @@
 	user-select: none;
 	overflow: hidden;
 	border-bottom: 1px solid var(--color-black-100);
+	cursor: pointer;
 }
 
 .item .content {
@@ -36,8 +37,4 @@
 	font-size: var(--fs-16);
 	line-height: var(--lh-110);
 	font-weight: var(--fw-sb);
-}
-
-.title {
-	cursor: pointer;
 }

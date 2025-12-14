@@ -3,7 +3,7 @@ import {
 	useAppSelector,
 } from '@app/providers/store/configs/hooks';
 import { useFetchSkillsQuery } from '@entities/skills/api/skillsApi';
-import { CenteredSpinner, EmptyState, FilterBase, Spinner } from '@shared/ui';
+import { EmptyState, FilterBase, Spinner } from '@shared/ui';
 import {
 	selectShowAllSkills,
 	selectSkillsFilter,

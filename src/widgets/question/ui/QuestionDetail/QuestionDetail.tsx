@@ -1,8 +1,7 @@
 import styles from './QuestionDetail.module.css';
-import type { PublicQuestion } from '@entities/question/model/types';
 import QuestionInfo from '../QuestionInfo/QuestionInfo';
 import QuestionSidebar from '../QuestionSidebar/QuestionSidebar';
-
+import type { PublicQuestion } from '@entities/question/model/types';
 interface QuestionDetailProps {
 	question: PublicQuestion;
 }

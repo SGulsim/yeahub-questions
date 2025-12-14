@@ -1,7 +1,6 @@
 import styles from './EmptyState.module.css';
 import { Button, Image } from '@shared/ui';
 import { search } from '@shared/assets';
-
 interface EmptyStateProps {
 	title?: string;
 	message?: string;

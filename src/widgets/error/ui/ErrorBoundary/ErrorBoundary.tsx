@@ -1,18 +1,19 @@
 import React from 'react';
 import ErrorFallback from '../ErrorFallback/ErrorFallback';
-
+interface ErrorBoundaryProps {
+	fallback?: React.ComponentType<{ error?: Error }>;
+}
 interface ErrorBoundaryState {
 	hasError: boolean;
 	error?: Error;
 }
-
 class ErrorBoundary extends React.Component<
 	React.PropsWithChildren<{
 		fallback?: React.ComponentType<{ error?: Error }>;
 	}>,
 	ErrorBoundaryState
 > {
-	constructor(props: any) {
+	constructor(props: React.PropsWithChildren<ErrorBoundaryProps>) {
 		super(props);
 		this.state = { hasError: false };
 	}

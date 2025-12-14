@@ -1,10 +1,7 @@
-import { FilterBase } from '@shared/ui/index';
+import { useAppDispatch, useAppSelector } from '@app/providers/store';
 import { difficultyButtons } from '../../model/constants';
-import {
-	useAppDispatch,
-	useAppSelector,
-} from '@app/providers/store/configs/hooks';
 import { setComplexity } from '../../model/filterSlice';
+import { FilterBase } from '@shared/ui';
 
 const ComplexityFilter = () => {
 	const dispatch = useAppDispatch();
