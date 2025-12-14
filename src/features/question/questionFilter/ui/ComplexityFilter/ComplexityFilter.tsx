@@ -7,10 +7,10 @@ import {
 import { setComplexity } from '../../model/filterSlice';
 
 const ComplexityFilter = () => {
+	const dispatch = useAppDispatch();
 	const activeComplexity = useAppSelector(
 		(state) => state.questionFilters.complexity
 	);
-	const dispatch = useAppDispatch();
 
 	const items = difficultyButtons.map((btn) => {
 		const isActive =
